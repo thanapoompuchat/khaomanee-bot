@@ -227,6 +227,51 @@ app.post('/api/delete-task', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// 🌟 ระบบใหม่: สรุปงานด้วย AI ส่งเข้ากลุ่ม LINE
+app.post('/api/ai-summary', async (req, res) => {
+    console.log("👉 มีคนกดปุ่มสรุปงาน! Group ID:", req.body.groupId);
+    try {
+        const { groupId } = req.body;
+        if (!groupId || groupId === 'null') {
+            throw new Error("ไม่มี Group ID ส่งมาเมี๊ยว");
+        }
+
+        // 1. ดึงงานทั้งหมดของกลุ่มนี้จาก Supabase
+        const { data: tasks, error } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('group_id', groupId);
+
+        if (error) throw error;
+
+        // 2. ตรวจสอบว่ามีงานไหม
+        if (!tasks || tasks.length === 0) {
+            await client.pushMessage(groupId, { type: 'text', text: "ตอนนี้กลุ่มเรายังไม่มีงานอะไรให้ขาวมณีสรุปเลยเมี๊ยว 🐾" });
+            return res.json({ success: true, message: "ไม่มีงาน" });
+        }
+
+        // 3. ให้ Gemini AI สรุปงานให้
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const prompt = `คุณคือ 'ขาวมณี' แมวผู้ช่วยจัดการงานสุดน่ารัก 
+        ช่วยสรุปสถานะงานทั้งหมดในกลุ่มนี้ให้หน่อย สไตล์การพูดแบบน่ารัก เป็นกันเอง มีคำลงท้ายด้วย 'เมี๊ยว' และใช้อีโมจิให้ดูสดใส 
+        จัดรูปแบบให้อ่านง่ายๆ (เช่น แบ่งงานที่เสร็จแล้ว กับงานที่ยังค้างอยู่)
+        นี่คือข้อมูลงานทั้งหมด: ${JSON.stringify(tasks)}`;
+        
+        const result = await model.generateContent(prompt);
+        const summaryText = result.response.text();
+
+        // 4. ส่งข้อความสรุปเข้าแชท LINE กลุ่ม
+        await client.pushMessage(groupId, { type: 'text', text: `✨ รายงานสรุปงานมาแล้วเมี๊ยว!\n\n${summaryText}` });
+
+        console.log("✅ สรุปงานสำเร็จ!");
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error("🚨 เจอตัวการแล้ว! Error สรุปงานคือ:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==========================================
 // ⏰ ระบบตั้งเวลา (Cron Job) เตือนงาน 8 โมงเช้า
 // ==========================================
@@ -242,7 +287,6 @@ cron.schedule('0 8 * * *', async () => {
         for (const [gId, tasks] of Object.entries(tasksByGroup)) {
             if(gId === 'personal' || !gId) continue; 
             const taskNames = tasks.map(t => `- ${t.task_name}`).join('\n');
-            // 🛠️ แก้ไขแล้ว: ใส่ปีกกา } ให้ครบถ้วน
             await client.pushMessage(gId, { type: 'text', text: `⏰ งานค้างวันนี้เมี๊ยว:\n${taskNames}` });
         }
     } catch (err) { console.error("Cron Error:", err); }
