@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ขาวมณี - จดงานใหม่</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;800&display=swap');
+        body { font-family: 'Kanit', sans-serif; background-color: #FAFAFA; }
+        
+        /* สไตล์ขอบดำหนาแบบ Neo-Brutalism */
+        .brutal-border { border: 3px solid #111; box-shadow: 4px 4px 0px #111; transition: all 0.1s; }
+        .brutal-border:focus-within { box-shadow: 6px 6px 0px #FBCFE8; outline: none; }
+        .brutal-btn:active { box-shadow: 0px 0px 0px #111; transform: translate(4px, 4px); }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen text-[#111]">
+
+    <div class="w-full max-w-md bg-white min-h-screen flex flex-col relative overflow-hidden">
+        
+        <div class="flex items-center p-6 pb-4 gap-4">
+            <button onclick="goBack()" class="text-3xl font-extrabold tracking-tighter hover:text-pink-500 transition-colors">←</button>
+            <h1 class="text-3xl font-extrabold leading-tight tracking-tight">จดงานใหม่<br><span class="text-pink-400 text-xl">ให้ขาวมณีช่วยนะเมี๊ยว!</span></h1>
+        </div>
+
+        <div class="px-6 flex-1 overflow-y-auto space-y-6 pb-32">
+            
+            <div>
+                <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📌 หัวข้องาน <span class="text-red-500">*</span></label>
+                <input type="text" id="taskName" placeholder="เช่น ทำสไลด์พรีเซนต์" 
+                    class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium">
+            </div>
+
+            <div>
+                <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📝 รายละเอียดเพิ่มเติม</label>
+                <textarea id="description" placeholder="อธิบายงานคร่าวๆ ให้เพื่อนเข้าใจง่ายๆ..." 
+                    class="w-full brutal-border rounded-2xl px-4 py-3 text-base font-medium h-24 resize-none"></textarea>
+            </div>
+
+            <div>
+                <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">⏰ เดดไลน์ (วันส่ง)</label>
+                <input type="date" id="deadline" 
+                    class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium bg-white">
+            </div>
+
+            <div class="bg-[#FBCFE8]/40 p-5 rounded-[2rem] brutal-border border-dashed">
+                <label class="block font-extrabold text-sm mb-3 uppercase tracking-wide">👥 แบ่งงาน & คนรับจบ</label>
+                
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="subName" placeholder="ชื่อคนทำ" class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
+                    <input type="text" id="subRole" placeholder="หน้าที่" class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
+                </div>
+                
+                <button type="button" onclick="addSubtask()" class="w-full bg-[#111] text-white brutal-border brutal-btn rounded-xl py-2 font-bold text-sm uppercase tracking-wider">
+                    + เพิ่มลงลิสต์
+                </button>
+
+                <ul id="subtaskList" class="mt-4 space-y-2 empty:hidden"></ul>
+            </div>
+
+        </div>
+
+        <div class="fixed bottom-0 w-full max-w-md bg-white border-t-4 border-[#111] p-6 pb-8 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+            <button onclick="submitTask()" id="submitBtn" class="w-full bg-[#FBCFE8] text-[#111] brutal-border brutal-btn rounded-[1.5rem] py-4 font-extrabold text-xl flex items-center justify-center gap-2">
+                <span>บันทึกงานเลย!</span> 🐾
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ดึง Group ID จาก URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const groupId = urlParams.get('groupId') || 'personal';
+        
+        // ปุ่มย้อนกลับ
+        function goBack() {
+            window.location.href = `/?groupId=${groupId}`;
+        }
+
+        let subtasks = [];
+
+        // ฟังก์ชันเพิ่มคนรับจบ
+        function addSubtask() {
+            const nameInput = document.getElementById('subName');
+            const roleInput = document.getElementById('subRole');
+            
+            if (!nameInput.value.trim() || !roleInput.value.trim()) {
+                alert('ใส่ชื่อกับหน้าที่ให้ครบก่อนนะเมี๊ยว!');
+                return;
+            }
+
+            subtasks.push({ name: nameInput.value.trim(), role: roleInput.value.trim() });
+            
+            // เคลียร์ช่องให้กรอกคนต่อไป
+            nameInput.value = '';
+            roleInput.value = '';
+            nameInput.focus();
+            
+            renderSubtasks();
+        }
+
+        // ฟังก์ชันลบคนรับจบออกจากลิสต์
+        function removeSubtask(index) {
+            subtasks.splice(index, 1);
+            renderSubtasks();
+        }
+
+        // ฟังก์ชันอัปเดตหน้าจอรายชื่อคน
+        function renderSubtasks() {
+            const list = document.getElementById('subtaskList');
+            list.innerHTML = '';
+            
+            subtasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-white brutal-border rounded-xl p-3";
+                li.innerHTML = `
+                    <div class="flex-1 truncate pr-2">
+                        <span class="font-bold text-[#111]">${task.name}</span> 
+                        <span class="text-sm text-gray-500 font-medium ml-1">👉 ${task.role}</span>
+                    </div>
+                    <button onclick="removeSubtask(${index})" class="text-red-500 font-extrabold hover:text-red-700 w-8 h-8 flex items-center justify-center bg-red-50 rounded-lg brutal-border brutal-btn text-sm">✕</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        // ฟังก์ชันส่งข้อมูลเข้า Database
+        async function submitTask() {
+            const taskName = document.getElementById('taskName').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const deadline = document.getElementById('deadline').value;
+
+            if (!taskName) {
+                alert('ลืมใส่หัวข้องานหรือเปล่าเมี๊ยว? 🙀');
+                document.getElementById('taskName').focus();
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-pulse">กำลังจด... ⏳</span>';
+            submitBtn.classList.remove('bg-[#FBCFE8]');
+            submitBtn.classList.add('bg-gray-200');
+
+            try {
+                const response = await fetch('/api/add-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        taskName,
+                        description,
+                        deadline,
+                        subtasks,
+                        groupId
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // เซฟเสร็จ เด้งกลับไปหน้ากระดาน
+                    window.location.href = `/?groupId=${groupId}`;
+                } else {
+                    alert('เกิดข้อผิดพลาด จดงานไม่ได้เมี๊ยว!');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('พังซะแล้ว ติดต่อลูกพี่ด่วน!');
+            } finally {
+                // คืนค่าปุ่มเดิมเผื่อกรณี Error
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>บันทึกงานเลย!</span> 🐾';
+                submitBtn.classList.add('bg-[#FBCFE8]');
+                submitBtn.classList.remove('bg-gray-200');
+            }
+        }
+    </script>
+</body>
+</html>

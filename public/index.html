@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ขาวมณี - จัดการงาน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700;800&display=swap');
+        body { font-family: 'Kanit', sans-serif; background-color: #FAFAFA; }
+        
+        /* สไตล์ขอบดำหนาแบบ Neo-Brutalism */
+        .brutal-border { border: 3px solid #111; box-shadow: 4px 4px 0px #111; }
+        .brutal-border:active { box-shadow: 0px 0px 0px #111; transform: translate(4px, 4px); }
+        
+        /* สไตล์แท็บ */
+        .tab-active { border-bottom: 4px solid #111; font-weight: 800; color: #111; }
+        .tab-inactive { color: #A1A1AA; font-weight: 500; }
+        
+        /* งานที่เสร็จแล้ว */
+        .task-done-card { background-color: #F4F4F5; border: 2px dashed #D4D4D8; color: #A1A1AA; }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen text-[#111]">
+
+    <div class="w-full max-w-md bg-white min-h-screen flex flex-col relative overflow-hidden">
+        
+        <div class="flex justify-between items-center p-6 pb-2">
+            <div class="text-2xl font-bold tracking-tighter">←</div>
+            <div class="text-2xl font-bold tracking-tighter">⋮</div>
+        </div>
+
+        <div class="flex gap-6 px-6 text-xl mb-6">
+            <button onclick="setFilter('all')" id="tab-all" class="tab-active pb-1">All Tasks</button>
+            <button onclick="setFilter('todo')" id="tab-todo" class="tab-inactive pb-1 hover:text-[#111] transition">Pending</button>
+            <button onclick="setFilter('done')" id="tab-done" class="tab-inactive pb-1 hover:text-[#111] transition">Done</button>
+        </div>
+
+        <div class="flex px-6 mb-6 gap-4">
+            <div class="w-12 rounded-full bg-[#FBCFE8]"></div>
+            <div class="flex-1 bg-gray-100 rounded-[2rem] h-32 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60');"></div>
+        </div>
+
+        <div class="px-6 mb-4">
+            <h1 class="text-3xl font-extrabold leading-tight">Hey, I'm ขาวมณี.<br>มีงานอะไรให้ช่วยไหมเมี๊ยว!</h1>
+        </div>
+
+        <div id="taskList" class="px-6 flex-1 overflow-y-auto space-y-4 pb-32">
+            <div class="text-center text-gray-400 py-10 font-bold">กำลังโหลดข้อมูล... 🐾</div>
+        </div>
+
+        <div class="fixed bottom-0 w-full max-w-md bg-[#111] rounded-t-[2.5rem] p-8 pb-10 mt-auto flex justify-between items-center z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.1)]">
+            <div class="text-white text-sm font-medium w-1/2">
+                <p>คลิกเพื่อสร้างงานใหม่</p>
+                <p class="text-[#FBCFE8]">หรือให้ AI สรุปงานก็ได้นะ!</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="triggerAISummary()" class="bg-[#FBCFE8] text-[#111] brutal-border rounded-xl w-12 h-12 flex items-center justify-center font-bold text-xl hover:bg-pink-300 transition-colors">✨</button>
+                <a href="/add-task.html" id="addTaskLink" class="bg-white text-[#111] brutal-border rounded-xl w-12 h-12 flex items-center justify-center font-bold text-2xl hover:bg-gray-100 transition-colors">+</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="taskModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4 transition-all">
+        <div class="bg-white rounded-[2rem] w-full max-w-sm p-6 relative brutal-border flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-start mb-4">
+                <h2 id="modalTitle" class="text-2xl font-extrabold pr-6 leading-tight">ชื่องาน</h2>
+                <button onclick="closeModal()" class="text-[#111] font-bold text-2xl">✕</button>
+            </div>
+            
+            <div class="space-y-4 text-sm mt-4 overflow-y-auto flex-1 pr-1">
+                <div>
+                    <p class="font-bold text-gray-500 mb-1 uppercase text-xs">รายละเอียด</p>
+                    <p id="modalDesc" class="text-gray-800 text-base font-medium bg-gray-50 p-3 rounded-2xl border-2 border-gray-200"></p>
+                </div>
+                
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <p class="font-bold text-gray-500 mb-1 uppercase text-xs">เดดไลน์</p>
+                        <p id="modalDeadline" class="font-bold text-[#111] text-lg"></p>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-bold text-gray-500 mb-1 uppercase text-xs">คนรับจบ</p>
+                        <p id="modalAssignee" class="font-bold text-[#111] text-lg bg-[#FBCFE8] px-2 py-1 rounded-lg inline-block"></p>
+                    </div>
+                </div>
+
+                <hr class="border-2 border-gray-100 my-4">
+                
+                <div class="mt-4">
+                    <label class="block font-bold text-gray-500 mb-2 uppercase text-xs">💬 ประวัติการทำงาน</label>
+                    
+                    <div id="progressHistory" class="space-y-2 mb-3 max-h-40 overflow-y-auto hidden pr-2">
+                        </div>
+
+                    <div class="flex flex-col gap-2 bg-gray-50 p-3 rounded-2xl border-2 border-gray-200 brutal-border">
+                        <input type="text" id="updaterName" placeholder="👤 ชื่อคนอัปเดต (เช่น มณี)" class="brutal-border rounded-xl px-3 py-2 text-sm font-bold focus:outline-none w-full bg-white">
+                        <div class="flex gap-2">
+                            <input type="text" id="progressInput" placeholder="อัปเดตว่า..." class="flex-1 brutal-border rounded-xl px-3 py-2 text-sm font-medium focus:outline-none bg-white">
+                            <button onclick="saveProgress()" id="saveProgressBtn" class="bg-[#111] text-white brutal-border rounded-xl px-4 py-2 font-bold hover:bg-pink-400 hover:text-[#111] transition-colors text-sm">ส่ง</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button onclick="deleteTask()" class="text-red-500 font-bold border-2 border-red-500 rounded-xl px-4 py-2 hover:bg-red-50 transition">🗑 ลบงานนี้</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const groupId = urlParams.get('groupId') || '';
+        document.getElementById('addTaskLink').href = `/add-task.html?groupId=${groupId}`;
+
+        let allTasks = [];
+        let currentFilter = 'all'; 
+        let currentOpenTaskId = null;
+
+        async function loadTasks() {
+            try {
+                const response = await fetch(`/api/tasks?groupId=${groupId}`);
+                allTasks = await response.json();
+                renderTasks();
+            } catch (error) {
+                document.getElementById('taskList').innerHTML = '<div class="text-center text-red-500 font-bold">พังซะแล้วเมี๊ยว 😿</div>';
+            }
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            ['all', 'todo', 'done'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if(t === filterType) {
+                    btn.className = "tab-active pb-1";
+                } else {
+                    btn.className = "tab-inactive pb-1 hover:text-[#111] transition";
+                }
+            });
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            const filteredTasks = allTasks.filter(t => currentFilter === 'all' ? true : t.status === currentFilter);
+            
+            if (filteredTasks.length === 0) {
+                taskList.innerHTML = '<div class="text-center text-gray-400 py-10 font-bold text-lg border-2 border-dashed border-gray-300 rounded-[2rem]">ว่างเปล่า เมี๊ยว~ 💤</div>';
+                return;
+            }
+
+            filteredTasks.forEach(task => {
+                const isDone = task.status === 'done';
+                const cardClass = isDone ? 'task-done-card' : 'bg-white brutal-border cursor-pointer';
+                const checkboxState = isDone ? 'checked' : '';
+                
+                let latestProgress = '';
+                if (task.progress_note) {
+                    try {
+                        const history = JSON.parse(task.progress_note);
+                        if (Array.isArray(history) && history.length > 0) {
+                            const last = history[history.length - 1];
+                            latestProgress = `<p class="text-xs mt-2 bg-[#FBCFE8] text-[#111] font-bold p-1.5 rounded-lg inline-block truncate max-w-[200px]">💬 ${last.name}: ${last.note}</p>`;
+                        }
+                    } catch(e) {
+                        latestProgress = `<p class="text-xs mt-2 bg-[#FBCFE8] text-[#111] font-bold p-1.5 rounded-lg inline-block truncate max-w-[200px]">💬 ${task.progress_note}</p>`;
+                    }
+                }
+
+                const taskHtml = `
+                    <div class="rounded-[1.5rem] p-5 flex gap-4 items-start transition-transform ${cardClass}" onclick="openModal('${task.id}')">
+                        <div class="pt-1" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${checkboxState} onchange="toggleTaskStatus('${task.id}', this.checked)" 
+                                class="w-6 h-6 text-[#111] brutal-border rounded focus:ring-[#111] cursor-pointer accent-[#111]">
+                        </div>
+                        <div class="flex-1 overflow-hidden">
+                            <h3 class="font-extrabold text-lg mb-1 truncate ${isDone ? 'line-through' : ''}">${task.task_name}</h3>
+                            <div class="text-sm font-medium ${isDone ? 'text-gray-400' : 'text-gray-600'}">
+                                <span>⏰ ${task.deadline || 'ไม่ระบุ'}</span>
+                            </div>
+                            ${latestProgress}
+                        </div>
+                    </div>
+                `;
+                taskList.insertAdjacentHTML('beforeend', taskHtml);
+            });
+        }
+
+        async function toggleTaskStatus(taskId, isChecked) {
+            const newStatus = isChecked ? 'done' : 'todo';
+            try {
+                await fetch('/api/update-task', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: taskId, status: newStatus })
+                });
+                const taskIndex = allTasks.findIndex(t => String(t.id) === String(taskId));
+                if(taskIndex > -1) allTasks[taskIndex].status = newStatus;
+                renderTasks();
+            } catch (error) { alert('อัปเดตสถานะไม่สำเร็จ!'); }
+        }
+
+        function openModal(taskId) {
+            const task = allTasks.find(t => String(t.id) === String(taskId));
+            if(!task) return;
+            currentOpenTaskId = taskId;
+            document.getElementById('modalTitle').innerText = task.task_name;
+            document.getElementById('modalDesc').innerText = task.description || '-';
+            document.getElementById('modalDeadline').innerText = task.deadline || '-';
+            document.getElementById('modalAssignee').innerText = task.assignee || '-';
+            
+            const progressBox = document.getElementById('progressHistory');
+            progressBox.innerHTML = '';
+            if(task.progress_note) {
+                try {
+                    const history = JSON.parse(task.progress_note);
+                    if(Array.isArray(history) && history.length > 0) {
+                        history.forEach(h => {
+                            const d = new Date(h.date).toLocaleString('th-TH', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+                            progressBox.innerHTML += `
+                                <div class="bg-pink-50 p-2 rounded-xl border-2 border-pink-200 text-sm brutal-border shadow-none">
+                                    <span class="font-extrabold text-[#111]">${h.name}</span> 
+                                    <span class="text-gray-400 text-[10px] ml-1">(${d})</span>
+                                    <p class="text-gray-800 mt-1 font-medium">${h.note}</p>
+                                </div>
+                            `;
+                        });
+                        progressBox.classList.remove('hidden');
+                    }
+                } catch(e) {
+                    progressBox.innerHTML = `<div class="bg-pink-50 p-2 rounded-xl border-2 border-pink-200 text-sm brutal-border shadow-none"><p class="font-medium text-gray-800">${task.progress_note}</p></div>`;
+                    progressBox.classList.remove('hidden');
+                }
+            } else {
+                progressBox.classList.add('hidden');
+            }
+
+            document.getElementById('updaterName').value = localStorage.getItem('updaterName') || '';
+            document.getElementById('progressInput').value = '';
+            document.getElementById('taskModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('taskModal').classList.add('hidden'); currentOpenTaskId = null; }
+
+        async function saveProgress() {
+            if(!currentOpenTaskId) return;
+            const newProgress = document.getElementById('progressInput').value.trim();
+            const updaterName = document.getElementById('updaterName').value.trim();
+            
+            if(!newProgress || !updaterName) {
+                return alert('ใส่ชื่อและข้อความอัปเดตให้ครบก่อนนะเมี๊ยว! 🙀');
+            }
+
+            localStorage.setItem('updaterName', updaterName); 
+
+            const btn = document.getElementById('saveProgressBtn');
+            btn.innerText = '...'; btn.disabled = true;
+            try {
+                const res = await fetch('/api/update-progress', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentOpenTaskId, progress_note: newProgress, updater_name: updaterName })
+                });
+                if(res.ok) { 
+                    await loadTasks(); 
+                    openModal(currentOpenTaskId); 
+                }
+            } catch(e) { alert('บันทึกไม่สำเร็จ'); } 
+            finally { btn.innerText = 'ส่ง'; btn.disabled = false; }
+        }
+
+        async function deleteTask() {
+            if(!currentOpenTaskId) return;
+            if(!confirm("แน่ใจนะว่าจะลบงานนี้ทิ้ง? 😿")) return;
+
+            try {
+                await fetch('/api/delete-task', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentOpenTaskId })
+                });
+                closeModal(); loadTasks();
+            } catch(e) { alert('ลบงานไม่สำเร็จ'); }
+        }
+
+        async function triggerAISummary() {
+            if(!groupId) return alert("ต้องเข้าผ่านกลุ่ม LINE ถึงจะสรุปงานให้กลุ่มได้นะเมี๊ยว!");
+            
+            const btn = document.querySelector('button[onclick="triggerAISummary()"]');
+            btn.innerText = '⏳';
+            try {
+                const response = await fetch('/api/ai-summary', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ groupId: groupId })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('ส่งสรุปเข้า LINE กลุ่มเรียบร้อยแล้วเมี๊ยว! ✨');
+                } else {
+                    alert('แง้ว! ส่งไม่ผ่าน: ' + (result.error || 'ไม่ทราบสาเหตุ'));
+                }
+            } catch (error) {
+                alert('ระบบเชื่อมต่อเออเร่อ: ' + error.message);
+            } finally {
+                btn.innerText = '✨';
+            }
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>
