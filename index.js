@@ -43,7 +43,7 @@ async function handleEvent(event) {
     if (event.replyToken === '00000000000000000000000000000000' || event.replyToken === 'ffffffffffffffffffffffffffffffff') return null;
     
     const groupId = event.source.type === 'group' ? event.source.groupId : (event.source.type === 'room' ? event.source.roomId : event.source.userId);
-    const baseUrl = process.env.BASE_URL || '';
+    const baseUrl = process.env.BASE_URL || 'https://line.me'; // ใส่ fallback ป้องกัน Error
 
     // 🌟 ดักจับตอน "ดึงเข้ากลุ่ม" (join) หรือ "แอดเป็นเพื่อน" (follow)
     if (event.type === 'join' || event.type === 'follow') {
@@ -59,16 +59,13 @@ async function handleEvent(event) {
                             type: "image",
                             url: "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/1.png",
                             size: "full",
-                            aspectRatio: "20:13",
-                            aspectMode: "cover"
-                        },
-                        body: {
-                            type: "box",
-                            layout: "vertical",
-                            contents: [
-                                { type: "text", text: "จดงานง่ายๆ แค่พิมพ์", weight: "bold", size: "xl", align: "center" },
-                                { type: "text", text: "ขาวมณีจด [งาน] @[คน]", size: "sm", color: "#aaaaaa", align: "center", margin: "md" }
-                            ]
+                            aspectRatio: "1:1", // ปรับเป็น 1:1 เพื่อให้รูปโชว์เต็มใบสวยๆ หลังจากเอาข้อความออก
+                            aspectMode: "cover",
+                            action: {
+                                type: "message",
+                                label: "เรียกขาวมณี",
+                                text: "ขาวมณี"
+                            }
                         }
                     },
                     {
@@ -77,16 +74,13 @@ async function handleEvent(event) {
                             type: "image",
                             url: "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/2.png",
                             size: "full",
-                            aspectRatio: "20:13",
-                            aspectMode: "cover"
-                        },
-                        body: {
-                            type: "box",
-                            layout: "vertical",
-                            contents: [
-                                { type: "text", text: "ดูภาพรวมงานที่กระดาน", weight: "bold", size: "xl", align: "center" },
-                                { type: "text", text: "กดดูผ่านเมนูได้เลยเมี๊ยว", size: "sm", color: "#aaaaaa", align: "center", margin: "md" }
-                            ]
+                            aspectRatio: "1:1",
+                            aspectMode: "cover",
+                            action: {
+                                type: "uri",
+                                label: "กระดานงาน",
+                                uri: `${baseUrl}/?groupId=${groupId}`
+                            }
                         }
                     }
                 ]
@@ -94,9 +88,9 @@ async function handleEvent(event) {
         };
 
         try {
-            // ส่งข้อความ Text นำทางก่อน แล้วตามด้วย Flex รูปภาพ
+            // ส่งข้อความ Text นำทางก่อน แล้วตามด้วย Flex รูปภาพล้วน
             return await client.replyMessage(event.replyToken, [
-                { type: 'text', text: 'สวัสดีค้าบ ขาวมณีมาแล้ววว 🐾\nพร้อมลุยงานแล้วเมี๊ยว!' },
+                { type: 'text', text: 'สวัสดีเมี๊ยว! ขาวมณีมาแล้วเจ้าค่ะ\nเรียกใช้ขาวมณีจดงานแค่พิมพ์ "ขาวมณี" นะเมี๊ยว!' },
                 welcomeFlex
             ]);
         } catch (err) {
