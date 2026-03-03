@@ -134,7 +134,7 @@ async function handleEvent(event) {
         if (userText.startsWith('ขาวมณีจด')) {
             const taskCommand = userText.replace('ขาวมณีจด', '').trim();
             try {
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
                 const prompt = `สกัดข้อมูลงานเป็น JSON: { "taskName": "...", "assignee": "..." } จากข้อความ: "${taskCommand}"`;
                 const result = await model.generateContent(prompt);
                 const taskData = JSON.parse(result.response.text().replace(/```json|```/g, '').trim());
@@ -251,7 +251,7 @@ app.post('/api/ai-summary', async (req, res) => {
         }
 
         // 3. ให้ Gemini AI สรุปงานให้
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const prompt = `คุณคือ 'ขาวมณี' แมวผู้ช่วยจัดการงานสุดน่ารัก 
         ช่วยสรุปสถานะงานทั้งหมดในกลุ่มนี้ให้หน่อย สไตล์การพูดแบบน่ารัก เป็นกันเอง มีคำลงท้ายด้วย 'เมี๊ยว' และใช้อีโมจิให้ดูสดใส 
         จัดรูปแบบให้อ่านง่ายๆ (เช่น แบ่งงานที่เสร็จแล้ว กับงานที่ยังค้างอยู่)
