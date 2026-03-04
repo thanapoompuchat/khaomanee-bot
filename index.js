@@ -8,9 +8,10 @@ const cron = require('node-cron');
 const app = express();
 const port = process.env.PORT || 10000;
 
-// ==========================================
-// ⚙️ ตั้งค่าระบบต่างๆ
-// ==========================================
+/* ==========================================
+   ⚙️ CONFIG
+========================================== */
+
 const lineConfig = {
     channelAccessToken: process.env.LINE_ACCESS_TOKEN,
     channelSecret: process.env.LINE_CHANNEL_SECRET
@@ -18,109 +19,112 @@ const lineConfig = {
 
 const client = new line.Client(lineConfig);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY // ⚠️ ต้องใช้ตัวนี้
+);
 
-// ==========================================
-// 🟢 Webhook Middleware (ต้องอยู่ก่อน express.json)
-// ==========================================
+/* ==========================================
+   🟢 WEBHOOK
+========================================== */
+
 app.post('/webhook', line.middleware(lineConfig), (req, res) => {
     Promise.all(req.body.events.map(handleEvent))
-        .then((result) => res.json(result))
-        .catch((err) => {
+        .then(result => res.json(result))
+        .catch(err => {
             console.error('Webhook Error:', err);
             res.status(500).end();
         });
 });
 
 app.use(express.json());
-// 🛠️ แก้ปัญหาเปิดไฟล์ไม่ได้: เติม extensions ให้หาไฟล์ .html อัตโนมัติ
 app.use(express.static('public', { extensions: ['html'] }));
 
-// ==========================================
-// 💬 ฟังก์ชันจัดการข้อความและ Event ต่างๆ
-// ==========================================
-async function handleEvent(event) {
-    // ป้องกัน Reply Token ปลอมตอน Verify
-    if (event.replyToken === '00000000000000000000000000000000' || event.replyToken === 'ffffffffffffffffffffffffffffffff') return null;
-    
-    const groupId = event.source.type === 'group' ? event.source.groupId : (event.source.type === 'room' ? event.source.roomId : event.source.userId);
-    const baseUrl = process.env.BASE_URL || 'https://line.me'; // ใส่ fallback ป้องกัน Error
+/* ==========================================
+   👥 MEMBER SYNC FUNCTION
+========================================== */
 
-    // 🌟 ดักจับตอน "ดึงเข้ากลุ่ม" (join) หรือ "แอดเป็นเพื่อน" (follow)
+async function syncMember(event) {
+    if (event.source.type !== 'group') return;
+
+    const groupId = event.source.groupId;
+    const userId = event.source.userId;
+    if (!userId) return;
+
+    try {
+        const profile = await client.getGroupMemberProfile(groupId, userId);
+
+        await supabase.from('group_members').upsert([{
+            group_id: groupId,
+            user_id: userId,
+            display_name: profile.displayName,
+            picture_url: profile.pictureUrl
+        }], { onConflict: 'group_id,user_id' });
+
+    } catch (err) {
+        console.error("Member sync error:", err.message);
+    }
+}
+
+/* ==========================================
+   💬 HANDLE EVENT
+========================================== */
+
+async function handleEvent(event) {
+
+    if (
+        event.replyToken === '00000000000000000000000000000000' ||
+        event.replyToken === 'ffffffffffffffffffffffffffffffff'
+    ) return null;
+
+    // 🔥 ทุก event ให้ sync สมาชิกก่อน
+    await syncMember(event);
+
+    const groupId =
+        event.source.type === 'group'
+            ? event.source.groupId
+            : event.source.type === 'room'
+                ? event.source.roomId
+                : event.source.userId;
+
+    const baseUrl = process.env.BASE_URL || 'https://line.me';
+
+    /* ================= JOIN / FOLLOW ================= */
+
     if (event.type === 'join' || event.type === 'follow') {
+
         const welcomeFlex = {
             type: "flex",
             altText: "สวัสดีเมี๊ยว! ขาวมณีพร้อมช่วยงานแล้ว",
             contents: {
-                type: "carousel",
-                contents: [
-                    {
-                        type: "bubble",
-                        hero: {
-                            type: "image",
-                            url: "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/1.png",
-                            size: "full",
-                            aspectRatio: "1:1",
-                            aspectMode: "cover",
-                            action: {
-                                type: "message",
-                                label: "เรียกขาวมณี",
-                                text: "ขาวมณี"
-                            }
-                        }
-                    },
-                    {
-                        type: "bubble",
-                        hero: {
-                            type: "image",
-                            url: "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/2.png",
-                            size: "full",
-                            aspectRatio: "1:1",
-                            aspectMode: "cover",
-                            action: {
-                                type: "uri",
-                                label: "กระดานงาน",
-                                uri: `${baseUrl}/?groupId=${groupId}`
-                            }
-                        }
-                    },
-                    {
-                        type: "bubble",
-                        hero: {
-                            type: "image",
-                            url: "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/3.png",
-                            size: "full",
-                            aspectRatio: "1:1",
-                            aspectMode: "cover",
-                            action: {
-                                type: "uri",
-                                label: "จดงานใหม่",
-                                uri: `${baseUrl}/add-task?groupId=${groupId}` 
-                            }
-                        }
-                    }
-                ]
+                type: "bubble",
+                body: {
+                    type: "box",
+                    layout: "vertical",
+                    contents: [
+                        { type: "text", text: "ขาวมณีมาแล้วเมี๊ยว 🐱", weight: "bold", size: "lg" },
+                        { type: "text", text: "กดดูงานหรือจดงานใหม่ได้เลย", margin: "md" }
+                    ]
+                }
             }
         };
 
-        try {
-            // ส่งข้อความ Text นำทางก่อน แล้วตามด้วย Flex รูปภาพล้วน
-            return await client.replyMessage(event.replyToken, [
-                { type: 'text', text: 'สวัสดีเมี๊ยว! ขาวมณีมาแล้วเจ้าค่ะ\nเรียกใช้ขาวมณีแค่พิมพ์ "ขาวมณี" นะเมี๊ยว!' },
-                welcomeFlex
-            ]);
-        } catch (err) {
-            console.error('Error sending Flex Message:', err.originalError?.response?.data || err);
-        }
+        return client.replyMessage(event.replyToken, [
+            { type: 'text', text: 'สวัสดีเมี๊ยว! ขาวมณีมาแล้วเจ้าค่ะ' },
+            welcomeFlex
+        ]);
     }
 
-    // --- ส่วนจัดการข้อความปกติพิมพ์คุยกับบอท ---
+    /* ================= MESSAGE ================= */
+
     if (event.type === 'message' && event.message.type === 'text') {
+
         const userText = event.message.text.trim();
-        
+
         if (userText === 'ขาวมณี') {
             return client.replyMessage(event.replyToken, {
-                type: 'text', text: 'เรียกขาวมณีมีอะไรให้ช่วยไหมเมี๊ยว?',
+                type: 'text',
+                text: 'เรียกขาวมณีมีอะไรให้ช่วยไหมเมี๊ยว?',
                 quickReply: {
                     items: [
                         { type: 'action', action: { type: 'uri', label: '📋 กระดานงาน', uri: `${baseUrl}/?groupId=${groupId}` } },
@@ -129,167 +133,122 @@ async function handleEvent(event) {
                 }
             });
         }
-        
-        // คำสั่งจดงาน AI
+
+        /* ========= AI CREATE TASK ========= */
+
         if (userText.startsWith('ขาวมณีจด')) {
             const taskCommand = userText.replace('ขาวมณีจด', '').trim();
+
             try {
                 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                const prompt = `สกัดข้อมูลงานเป็น JSON: { "taskName": "...", "assignee": "..." } จากข้อความ: "${taskCommand}"`;
+
+                const prompt = `
+                สกัดข้อมูลงานเป็น JSON:
+                { "taskName": "...", "assignee": "..." }
+                จากข้อความ: "${taskCommand}"
+                `;
+
                 const result = await model.generateContent(prompt);
-                const taskData = JSON.parse(result.response.text().replace(/```json|```/g, '').trim());
-                
-                // 🛠️ โค้ดส่วนที่แก้เรื่องการแปลง JSON ป้องกันบั๊กแชท
-                let targetGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
-                
-                const taskNameStr = typeof taskData.taskName === 'string'
-                    ? taskData.taskName
-                    : Array.isArray(taskData) && taskData.length > 0 && taskData[0].taskName
-                        ? taskData[0].taskName
-                        : "งานที่ไม่ได้ตั้งชื่อ";
+                const raw = result.response.text().replace(/```json|```/g, '').trim();
+                const taskData = JSON.parse(raw);
 
-                const assigneeStr = typeof taskData.assignee === 'string'
-                    ? taskData.assignee
-                    : Array.isArray(taskData) && taskData.length > 0 && taskData[0].assignee
-                        ? taskData[0].assignee
-                        : "ยังไม่ระบุ";
-
-                const insertGroupId = targetGroupId && targetGroupId !== "null" ? targetGroupId : "personal";
-
-                await supabase.from('tasks').insert([{ 
-                    task_name: taskNameStr, 
-                    assignee: assigneeStr, 
-                    status: 'todo', 
-                    group_id: insertGroupId 
+                await supabase.from('tasks').insert([{
+                    task_name: taskData.taskName || "งานที่ไม่ได้ตั้งชื่อ",
+                    assignee: taskData.assignee || "ยังไม่ระบุ",
+                    status: 'todo',
+                    group_id: groupId
                 }]);
-                
-                return client.replyMessage(event.replyToken, { type: 'text', text: `📝 จดงาน "${taskNameStr}" ให้แล้วเมี๊ยว!` });
-            } catch (e) { 
-                console.error(e);
-                return client.replyMessage(event.replyToken, { type: 'text', text: "แง้ว! ขาวมณีงง พิมพ์ใหม่อีกทีนะเมี๊ยว" });
+
+                return client.replyMessage(event.replyToken, {
+                    type: 'text',
+                    text: `📝 จดงาน "${taskData.taskName}" ให้แล้วเมี๊ยว!`
+                });
+
+            } catch (err) {
+                console.error(err);
+                return client.replyMessage(event.replyToken, {
+                    type: 'text',
+                    text: "ขาวมณีงง พิมพ์ใหม่อีกทีนะเมี๊ยว 🐾"
+                });
             }
         }
     }
+
+    return null;
 }
 
-// ==========================================
-// 🌐 API Endpoints (ส่วนหลังบ้านและหน้าเว็บ)
-// ==========================================
+/* ==========================================
+   🌐 API
+========================================== */
+
 app.get('/api/tasks', async (req, res) => {
-    try {
-        const { groupId } = req.query;
-        let query = supabase.from('tasks').select('*').order('created_at', { ascending: false });
-        if (groupId && groupId !== 'null') query = query.eq('group_id', groupId);
-        const { data, error } = await query;
-        if (error) throw error;
-        res.json(data);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    const { groupId } = req.query;
+
+    let query = supabase.from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (groupId) query = query.eq('group_id', groupId);
+
+    const { data, error } = await query;
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json(data);
 });
 
-app.post('/api/add-task', async (req, res) => {
-    try {
-        const { taskName, description, deadline, subtasks, groupId } = req.body;
-        let assigneeText = (subtasks && subtasks.length > 0) ? subtasks.map(s => `${s.name} (${s.role})`).join(', ') : 'ยังไม่แบ่งงาน';
-        const { error } = await supabase.from('tasks').insert([{
-            task_name: taskName, description: description || '', deadline: deadline || null, assignee: assigneeText, status: 'todo', group_id: groupId
-        }]);
-        if (error) throw error;
-        if (groupId && groupId !== 'personal') {
-            await client.pushMessage(groupId, { type: 'text', text: `📝 มีงานใหม่มาเมี๊ยว!\n📌 หัวข้อ: ${taskName}\n👥 คนทำ: ${assigneeText}` });
-        }
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false, error: error.message }); }
+app.get('/api/members', async (req, res) => {
+    const { groupId } = req.query;
+
+    const { data, error } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_id', groupId);
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.json(data);
 });
 
-app.post('/api/update-task', async (req, res) => {
-    try {
-        const { id, status } = req.body;
-        await supabase.from('tasks').update({ status: status }).eq('id', id);
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
+/* ==========================================
+   ⏰ CRON
+========================================== */
 
-app.post('/api/update-progress', async (req, res) => {
+cron.schedule('0 8 * * *', async () => {
     try {
-        const { id, progress_note, updater_name } = req.body;
-        const { data: task } = await supabase.from('tasks').select('progress_note').eq('id', id).single();
-        let history = task.progress_note ? JSON.parse(task.progress_note) : [];
-        history.push({ name: updater_name || 'ไม่ระบุ', note: progress_note, date: new Date().toISOString() });
-        await supabase.from('tasks').update({ progress_note: JSON.stringify(history) }).eq('id', id);
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/delete-task', async (req, res) => {
-    try {
-        await supabase.from('tasks').delete().eq('id', req.body.id);
-        res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// 🌟 ระบบใหม่: สรุปงานด้วย AI ส่งเข้ากลุ่ม LINE
-app.post('/api/ai-summary', async (req, res) => {
-    console.log("👉 มีคนกดปุ่มสรุปงาน! Group ID:", req.body.groupId);
-    try {
-        const { groupId } = req.body;
-        if (!groupId || groupId === 'null') {
-            throw new Error("ไม่มี Group ID ส่งมาเมี๊ยว");
-        }
-
-        // 1. ดึงงานทั้งหมดของกลุ่มนี้จาก Supabase
-        const { data: tasks, error } = await supabase
+        const { data: pendingTasks } = await supabase
             .from('tasks')
             .select('*')
-            .eq('group_id', groupId);
+            .eq('status', 'todo');
 
-        if (error) throw error;
+        if (!pendingTasks) return;
 
-        // 2. ตรวจสอบว่ามีงานไหม
-        if (!tasks || tasks.length === 0) {
-            await client.pushMessage(groupId, { type: 'text', text: "ตอนนี้กลุ่มเรายังไม่มีงานอะไรให้ขาวมณีสรุปเลยเมี๊ยว 🐾" });
-            return res.json({ success: true, message: "ไม่มีงาน" });
+        const tasksByGroup = {};
+
+        pendingTasks.forEach(t => {
+            if (!tasksByGroup[t.group_id]) tasksByGroup[t.group_id] = [];
+            tasksByGroup[t.group_id].push(t);
+        });
+
+        for (const [gId, tasks] of Object.entries(tasksByGroup)) {
+            if (!gId || gId === 'personal') continue;
+
+            const taskNames = tasks.map(t => `- ${t.task_name}`).join('\n');
+
+            await client.pushMessage(gId, {
+                type: 'text',
+                text: `⏰ งานค้างวันนี้เมี๊ยว:\n${taskNames}`
+            });
         }
 
-        // 3. ให้ Gemini AI สรุปงานให้
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = `คุณคือ 'ขาวมณี' แมวผู้ช่วยจัดการงานสุดน่ารัก 
-        ช่วยสรุปสถานะงานทั้งหมดในกลุ่มนี้ให้หน่อย สไตล์การพูดแบบน่ารัก เป็นกันเอง มีคำลงท้ายด้วย 'เมี๊ยว' และใช้อีโมจิให้ดูสดใส 
-        จัดรูปแบบให้อ่านง่ายๆ (เช่น แบ่งงานที่เสร็จแล้ว กับงานที่ยังค้างอยู่)
-        นี่คือข้อมูลงานทั้งหมด: ${JSON.stringify(tasks)}`;
-        
-        const result = await model.generateContent(prompt);
-        const summaryText = result.response.text();
-
-        // 4. ส่งข้อความสรุปเข้าแชท LINE กลุ่ม
-        await client.pushMessage(groupId, { type: 'text', text: `✨ รายงานสรุปงานมาแล้วเมี๊ยว!\n\n${summaryText}` });
-
-        console.log("✅ สรุปงานสำเร็จ!");
-        res.json({ success: true });
-
-    } catch (error) {
-        console.error("🚨 เจอตัวการแล้ว! Error สรุปงานคือ:", error);
-        res.status(500).json({ error: error.message });
+    } catch (err) {
+        console.error("Cron Error:", err);
     }
 });
 
-// ==========================================
-// ⏰ ระบบตั้งเวลา (Cron Job) เตือนงาน 8 โมงเช้า
-// ==========================================
-cron.schedule('0 8 * * *', async () => {
-    try {
-        const { data: pendingTasks } = await supabase.from('tasks').select('*').eq('status', 'todo');
-        if (!pendingTasks) return;
-        const tasksByGroup = {};
-        pendingTasks.forEach(t => {
-            if(!tasksByGroup[t.group_id]) tasksByGroup[t.group_id] = [];
-            tasksByGroup[t.group_id].push(t);
-        });
-        for (const [gId, tasks] of Object.entries(tasksByGroup)) {
-            if(gId === 'personal' || !gId) continue; 
-            const taskNames = tasks.map(t => `- ${t.task_name}`).join('\n');
-            await client.pushMessage(gId, { type: 'text', text: `⏰ งานค้างวันนี้เมี๊ยว:\n${taskNames}` });
-        }
-    } catch (err) { console.error("Cron Error:", err); }
-});
+/* ==========================================
+   🚀 START
+========================================== */
 
-app.listen(port, () => console.log(`🚀 ขาวมณีพร้อมรับใช้ในพอร์ต ${port}`));
+app.listen(port, () => {
+    console.log(`🚀 ขาวมณีพร้อมในพอร์ต ${port}`);
+});
