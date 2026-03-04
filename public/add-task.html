@@ -17,75 +17,73 @@
 
 <div class="w-full max-w-md bg-white min-h-screen flex flex-col relative overflow-hidden">
 
-<div class="flex items-center p-6 pb-4 gap-4">
-<button onclick="goBack()" class="text-3xl font-extrabold tracking-tighter hover:text-pink-500 transition-colors">←</button>
-<h1 class="text-3xl font-extrabold leading-tight tracking-tight">
-จดงานใหม่<br>
-<span class="text-pink-400 text-xl">ให้ขาวมณีช่วยนะเมี๊ยว!</span>
-</h1>
-</div>
+    <div class="flex items-center p-6 pb-4 gap-4">
+        <button onclick="goBack()" class="text-3xl font-extrabold tracking-tighter hover:text-pink-500 transition-colors">←</button>
+        <h1 class="text-3xl font-extrabold leading-tight tracking-tight">
+            จดงานใหม่<br>
+            <span class="text-pink-400 text-xl">ให้ขาวมณีช่วยนะเมี๊ยว!</span>
+        </h1>
+    </div>
 
-<div class="px-6 flex-1 overflow-y-auto space-y-6 pb-32">
+    <div class="px-6 flex-1 overflow-y-auto space-y-6 pb-32">
 
-<div>
-<label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📌 หัวข้องาน <span class="text-red-500">*</span></label>
-<input type="text" id="taskName" placeholder="เช่น ทำสไลด์พรีเซนต์"
-class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium">
-</div>
+        <div>
+            <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📌 หัวข้องาน <span class="text-red-500">*</span></label>
+            <input type="text" id="taskName" placeholder="เช่น ทำสไลด์พรีเซนต์"
+                class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium">
+        </div>
 
-<div>
-<label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📝 รายละเอียดเพิ่มเติม</label>
-<textarea id="description"
-class="w-full brutal-border rounded-2xl px-4 py-3 text-base font-medium h-24 resize-none"></textarea>
-</div>
+        <div>
+            <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">📝 รายละเอียดเพิ่มเติม</label>
+            <textarea id="description"
+                class="w-full brutal-border rounded-2xl px-4 py-3 text-base font-medium h-24 resize-none"></textarea>
+        </div>
 
-<div>
-<label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">⏰ เดดไลน์ (วันส่ง)</label>
-<input type="date" id="deadline"
-class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium bg-white">
-</div>
+        <div>
+            <label class="block font-extrabold text-sm mb-2 uppercase tracking-wide">⏰ เดดไลน์ (วันส่ง)</label>
+            <input type="date" id="deadline"
+                class="w-full brutal-border rounded-2xl px-4 py-3 text-lg font-medium bg-white">
+        </div>
 
-<!-- 🔥 SECTION แบ่งงาน -->
-<div class="bg-[#FBCFE8]/40 p-5 rounded-[2rem] brutal-border border-dashed">
-<label class="block font-extrabold text-sm mb-3 uppercase tracking-wide">👥 แบ่งงาน & คนรับจบ</label>
+        <div class="bg-[#FBCFE8]/40 p-5 rounded-[2rem] brutal-border border-dashed">
+            <label class="block font-extrabold text-sm mb-3 uppercase tracking-wide">👥 แบ่งงาน & คนรับจบ</label>
 
-<!-- 🔥 NEW DROPDOWN MEMBER -->
-<div class="mb-3">
-<label class="block text-xs font-bold mb-1">เลือกจากสมาชิกในกลุ่ม</label>
-<div class="flex gap-2">
-<select id="memberSelect" class="w-full brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
-<option value="">-- เลือกสมาชิก --</option>
-</select>
-<button type="button" onclick="useSelectedMember()"
-class="bg-[#111] text-white brutal-border brutal-btn rounded-xl px-3 text-sm font-bold">
-ใช้
-</button>
-</div>
-</div>
+            <div class="mb-3">
+                <label class="block text-xs font-bold mb-1">เลือกจากสมาชิกในกลุ่ม</label>
+                <div class="flex gap-2">
+                    <select id="memberSelect" class="w-full brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
+                        <option value="">-- เลือกสมาชิก --</option>
+                    </select>
+                    <button type="button" onclick="useSelectedMember()"
+                        class="bg-[#111] text-white brutal-border brutal-btn rounded-xl px-3 text-sm font-bold">
+                        ใช้
+                    </button>
+                </div>
+            </div>
 
-<div class="flex gap-2 mb-3">
-<input type="text" id="subName" placeholder="ชื่อคนทำ"
-class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
-<input type="text" id="subRole" placeholder="หน้าที่"
-class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
-</div>
+            <div class="flex gap-2 mb-3">
+                <input type="text" id="subName" placeholder="ชื่อคนทำ"
+                    class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
+                <input type="text" id="subRole" placeholder="หน้าที่"
+                    class="w-1/2 brutal-border rounded-xl px-3 py-2 text-sm font-medium bg-white">
+            </div>
 
-<button type="button" onclick="addSubtask()"
-class="w-full bg-[#111] text-white brutal-border brutal-btn rounded-xl py-2 font-bold text-sm uppercase tracking-wider">
-+ เพิ่มลงลิสต์
-</button>
+            <button type="button" onclick="addSubtask()"
+                class="w-full bg-[#111] text-white brutal-border brutal-btn rounded-xl py-2 font-bold text-sm uppercase tracking-wider">
+                + เพิ่มลงลิสต์
+            </button>
 
-<ul id="subtaskList" class="mt-4 space-y-2 empty:hidden"></ul>
-</div>
+            <ul id="subtaskList" class="mt-4 space-y-2 empty:hidden"></ul>
+        </div>
 
-</div>
+    </div>
 
-<div class="fixed bottom-0 w-full max-w-md bg-white border-t-4 border-[#111] p-6 pb-8 z-10">
-<button onclick="submitTask()" id="submitBtn"
-class="w-full bg-[#FBCFE8] text-[#111] brutal-border brutal-btn rounded-[1.5rem] py-4 font-extrabold text-xl flex items-center justify-center gap-2">
-<span>บันทึกงานเลย!</span> 🐾
-</button>
-</div>
+    <div class="fixed bottom-0 w-full max-w-md bg-white border-t-4 border-[#111] p-6 pb-8 z-10">
+        <button onclick="submitTask()" id="submitBtn"
+            class="w-full bg-[#FBCFE8] text-[#111] brutal-border brutal-btn rounded-[1.5rem] py-4 font-extrabold text-xl flex items-center justify-center gap-2">
+            <span>บันทึกงานเลย!</span> 🐾
+        </button>
+    </div>
 
 </div>
 
@@ -95,7 +93,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const groupId = urlParams.get('groupId') || 'personal';
 
 function goBack() {
-window.location.href = `/?groupId=${groupId}`;
+    window.location.href = `/?groupId=${groupId}`;
 }
 
 let subtasks = [];
@@ -105,32 +103,32 @@ let subtasks = [];
 ===================================== */
 
 async function loadMembers() {
-if (groupId === 'personal') return;
+    if (groupId === 'personal') return;
 
-try {
-const response = await fetch(`/api/members?groupId=${groupId}`);
-const members = await response.json();
+    try {
+        const response = await fetch(`/api/members?groupId=${groupId}`);
+        const members = await response.json();
 
-const select = document.getElementById('memberSelect');
-select.innerHTML = '<option value="">-- เลือกสมาชิก --</option>';
+        const select = document.getElementById('memberSelect');
+        select.innerHTML = '<option value="">-- เลือกสมาชิก --</option>';
 
-members.forEach(member => {
-const option = document.createElement('option');
-option.value = member.display_name;
-option.textContent = member.display_name;
-select.appendChild(option);
-});
-} catch (err) {
-console.error("โหลดสมาชิกไม่สำเร็จ:", err);
-}
+        members.forEach(member => {
+            const option = document.createElement('option');
+            option.value = member.display_name;
+            option.textContent = member.display_name;
+            select.appendChild(option);
+        });
+    } catch (err) {
+        console.error("โหลดสมาชิกไม่สำเร็จ:", err);
+    }
 }
 
 function useSelectedMember() {
-const select = document.getElementById('memberSelect');
-const selected = select.value;
-if (!selected) return;
+    const select = document.getElementById('memberSelect');
+    const selected = select.value;
+    if (!selected) return;
 
-document.getElementById('subName').value = selected;
+    document.getElementById('subName').value = selected;
 }
 
 /* =====================================
@@ -138,95 +136,102 @@ document.getElementById('subName').value = selected;
 ===================================== */
 
 function addSubtask() {
-const nameInput = document.getElementById('subName');
-const roleInput = document.getElementById('subRole');
+    const nameInput = document.getElementById('subName');
+    const roleInput = document.getElementById('subRole');
 
-if (!nameInput.value.trim() || !roleInput.value.trim()) {
-alert('ใส่ชื่อกับหน้าที่ให้ครบก่อนนะเมี๊ยว!');
-return;
-}
+    if (!nameInput.value.trim() || !roleInput.value.trim()) {
+        alert('ใส่ชื่อกับหน้าที่ให้ครบก่อนนะเมี๊ยว!');
+        return;
+    }
 
-subtasks.push({
-name: nameInput.value.trim(),
-role: roleInput.value.trim()
-});
+    subtasks.push({
+        name: nameInput.value.trim(),
+        role: roleInput.value.trim()
+    });
 
-nameInput.value = '';
-roleInput.value = '';
-nameInput.focus();
+    nameInput.value = '';
+    roleInput.value = '';
+    nameInput.focus();
 
-renderSubtasks();
+    renderSubtasks();
 }
 
 function removeSubtask(index) {
-subtasks.splice(index, 1);
-renderSubtasks();
+    subtasks.splice(index, 1);
+    renderSubtasks();
 }
 
 function renderSubtasks() {
-const list = document.getElementById('subtaskList');
-list.innerHTML = '';
+    const list = document.getElementById('subtaskList');
+    list.innerHTML = '';
 
-subtasks.forEach((task, index) => {
-const li = document.createElement('li');
-li.className = "flex justify-between items-center bg-white brutal-border rounded-xl p-3";
-li.innerHTML = `
-<div class="flex-1 truncate pr-2">
-<span class="font-bold text-[#111]">${task.name}</span>
-<span class="text-sm text-gray-500 font-medium ml-1">👉 ${task.role}</span>
-</div>
-<button onclick="removeSubtask(${index})"
-class="text-red-500 font-extrabold hover:text-red-700 w-8 h-8 flex items-center justify-center bg-red-50 rounded-lg brutal-border brutal-btn text-sm">✕</button>
-`;
-list.appendChild(li);
-});
+    subtasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = "flex justify-between items-center bg-white brutal-border rounded-xl p-3";
+        li.innerHTML = `
+            <div class="flex-1 truncate pr-2">
+                <span class="font-bold text-[#111]">${task.name}</span>
+                <span class="text-sm text-gray-500 font-medium ml-1">👉 ${task.role}</span>
+            </div>
+            <button onclick="removeSubtask(${index})"
+                class="text-red-500 font-extrabold hover:text-red-700 w-8 h-8 flex items-center justify-center bg-red-50 rounded-lg brutal-border brutal-btn text-sm">✕</button>
+        `;
+        list.appendChild(li);
+    });
 }
 
 /* =====================================
-   SUBMIT TASK (เดิม 100%)
+   SUBMIT TASK (🔥 แก้ไขให้เชื่อมกับฐานข้อมูลได้แล้ว)
 ===================================== */
 
 async function submitTask() {
-const taskName = document.getElementById('taskName').value.trim();
-const description = document.getElementById('description').value.trim();
-const deadline = document.getElementById('deadline').value;
+    const taskName = document.getElementById('taskName').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const deadline = document.getElementById('deadline').value;
 
-if (!taskName) {
-alert('ลืมใส่หัวข้องานหรือเปล่าเมี๊ยว? 🙀');
-return;
-}
+    if (!taskName) {
+        alert('ลืมใส่หัวข้องานหรือเปล่าเมี๊ยว? 🙀');
+        return;
+    }
 
-const submitBtn = document.getElementById('submitBtn');
-submitBtn.disabled = true;
-submitBtn.innerHTML = '<span class="animate-pulse">กำลังจด... ⏳</span>';
+    // 🐾 แปลงรายชื่อใน subtasks ให้เป็น String เพื่อส่งเข้า column "assignee"
+    // เช่น "สมชาย (PM), สมหญิง (Dev)"
+    let finalAssignee = null;
+    if (subtasks.length > 0) {
+        finalAssignee = subtasks.map(t => `${t.name} (${t.role})`).join(', ');
+    }
 
-try {
-const response = await fetch('/api/add-task', {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({
-taskName,
-description,
-deadline,
-subtasks,
-groupId
-})
-});
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="animate-pulse">กำลังจด... ⏳</span>';
 
-const result = await response.json();
+    try {
+        const response = await fetch('/api/add-task', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                taskName: taskName,
+                description: description,
+                deadline: deadline,
+                assignee: finalAssignee, // 🔥 ตรงนี้แหละที่แก้ให้คุยกับหลังบ้านรู้เรื่อง!
+                groupId: groupId
+            })
+        });
 
-if (result.success) {
-window.location.href = `/?groupId=${groupId}`;
-} else {
-alert('เกิดข้อผิดพลาด จดงานไม่ได้เมี๊ยว!');
-}
-} catch (error) {
-console.error(error);
-alert('พังซะแล้ว ติดต่อลูกพี่ด่วน!');
-} finally {
-submitBtn.disabled = false;
-submitBtn.innerHTML = '<span>บันทึกงานเลย!</span> 🐾';
-}
+        const result = await response.json();
+
+        if (result.success) {
+            window.location.href = `/?groupId=${groupId}`;
+        } else {
+            alert('เกิดข้อผิดพลาด จดงานไม่ได้เมี๊ยว!');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('พังซะแล้ว ติดต่อลูกพี่ด่วน!');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>บันทึกงานเลย!</span> 🐾';
+    }
 }
 
 /* =====================================

@@ -23,8 +23,7 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
 }
 
 const client = new line.Client(lineConfig);
-// 🐾 เช็คด้วยว่ามี GEMINI_API_KEY ไหม
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
@@ -107,7 +106,7 @@ async function handleEvent(event) {
     if (event.type === 'message' && event.message.type === 'text') {
         const userText = event.message.text.trim();
 
-        if (userText === 'ขาวมณี') {
+        if (userText === 'ขาวมณี' || userText === 'จัดการงาน' || userText === 'เมนู') {
             return client.replyMessage(event.replyToken, {
                 type: 'text',
                 text: 'เลือกเมนูได้เลยเมี๊ยว 👇',
@@ -139,7 +138,7 @@ async function handleEvent(event) {
 }
 
 /* ==========================================
-   🌐 API (รวมของเก่าและของใหม่ที่หน้าเว็บต้องการ)
+   🌐 API
 ========================================== */
 
 app.get('/api/tasks', async (req, res) => {
@@ -170,9 +169,10 @@ app.get('/api/members', async (req, res) => {
     res.json(data);
 });
 
+// 🆕 API สำหรับเพิ่มงาน (แก้ให้รับ assignee ด้วย)
 app.post('/api/add-task', async (req, res) => {
     try {
-        const { taskName, description, deadline, groupId } = req.body;
+        const { taskName, description, deadline, assignee, groupId } = req.body;
 
         if (!taskName) {
             return res.status(400).json({ success: false });
@@ -185,6 +185,7 @@ app.post('/api/add-task', async (req, res) => {
                 description: description || null,
                 deadline: deadline || null,
                 status: 'todo',
+                assignee: assignee || null, // 🐾 บันทึกชื่อคนรับจบตั้งแต่ตอนสร้างงาน
                 group_id: groupId || 'personal'
             }]);
 
@@ -199,9 +200,7 @@ app.post('/api/add-task', async (req, res) => {
     }
 });
 
-/* --- 🚨 ส่วนที่เติมให้ใหม่ด้านล่างนี้เลยเมี๊ยว! 🚨 --- */
-
-// 1. API สำหรับกด Checkbox เปลี่ยนสถานะงาน (Todo <-> Done)
+// API อัปเดตสถานะงาน
 app.post('/api/update-task', async (req, res) => {
     const { id, status } = req.body;
     const { error } = await supabase.from('tasks').update({ status }).eq('id', id);
@@ -209,10 +208,9 @@ app.post('/api/update-task', async (req, res) => {
     res.json({ success: true });
 });
 
-// 2. API สำหรับอัปเดตความคืบหน้า (ใน Modal)
+// API อัปเดตความคืบหน้า
 app.post('/api/update-progress', async (req, res) => {
     const { id, progress_note, updater_name } = req.body;
-    // อัปเดตทั้ง progress_note และเปลี่ยนคนรับผิดชอบเป็นชื่อคนอัปเดตล่าสุด
     const { error } = await supabase.from('tasks').update({ 
         progress_note: progress_note,
         assignee: updater_name 
@@ -221,7 +219,7 @@ app.post('/api/update-progress', async (req, res) => {
     res.json({ success: true });
 });
 
-// 3. API สำหรับลบงาน
+// API ลบงาน
 app.post('/api/delete-task', async (req, res) => {
     const { id } = req.body;
     const { error } = await supabase.from('tasks').delete().eq('id', id);
@@ -229,13 +227,12 @@ app.post('/api/delete-task', async (req, res) => {
     res.json({ success: true });
 });
 
-// 4. API สำหรับ AI สรุปงานแล้วส่งเข้ากลุ่ม LINE
+// API AI สรุปงาน
 app.post('/api/ai-summary', async (req, res) => {
     const { groupId } = req.body;
     if (!groupId) return res.status(400).json({ error: "ไม่พบ Group ID" });
 
     try {
-        // ดึงงานทั้งหมดของกลุ่มนี้มา
         const { data: tasks, error } = await supabase.from('tasks').select('*').eq('group_id', groupId);
         
         if (error || !tasks || tasks.length === 0) {
@@ -243,19 +240,16 @@ app.post('/api/ai-summary', async (req, res) => {
             return res.json({ success: true });
         }
 
-        // เตรียมข้อมูลป้อนให้ AI
         const taskData = tasks.map(t => 
             `- งาน: ${t.task_name} | สถานะ: ${t.status === 'done' ? 'เสร็จแล้ว✅' : 'รอทำ⏳'} | กำหนดส่ง: ${t.deadline || 'ไม่ระบุ'} | คนรับจบ: ${t.assignee || 'ยังไม่มี'}`
         ).join('\n');
 
         const prompt = `คุณคือ 'ขาวมณี' ผู้ช่วยแมวเหมียวสุดน่ารัก กวนนิดๆ เป็นกันเอง ช่วยสรุปรายการงานของกลุ่มนี้ให้หน่อย ให้อ่านง่ายๆ แบ่งเป็นงานที่เสร็จแล้วกับงานที่ค้างอยู่ ใช้ Emoji ประกอบด้วยนะเมี๊ยว\n\nข้อมูลงาน:\n${taskData}`;
 
-        // เรียกใช้งาน Gemini
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const aiResponse = result.response.text();
 
-        // ส่งผลลัพธ์กลับเข้ากลุ่ม LINE
         await client.pushMessage(groupId, { type: 'text', text: aiResponse });
         res.json({ success: true });
 
