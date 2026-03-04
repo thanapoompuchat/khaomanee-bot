@@ -89,10 +89,7 @@
             <div>
                 <label class="block font-bold text-gray-500 mb-2 uppercase text-xs">💬 ประวัติการทำงาน</label>
 
-                <div id="progressHistory" class="space-y-2 mb-3 max-h-40 overflow-y-auto hidden"></div>
-
-                <div class="flex flex-col gap-2 bg-gray-50 p-3 rounded-2xl border-2 border-gray-200 brutal-border">
-                    
+                <div class="flex flex-col gap-2 bg-gray-50 p-3 rounded-2xl border-2 border-gray-200 brutal-border mb-4">
                     <select id="updaterName" class="brutal-border rounded-xl px-3 py-2 text-sm font-bold bg-white cursor-pointer">
                         <option value="">👤 เลือกชื่อคนอัปเดต...</option>
                     </select>
@@ -106,10 +103,12 @@
                         </button>
                     </div>
                 </div>
+
+                <div id="progressHistory" class="space-y-2 max-h-48 overflow-y-auto hidden"></div>
             </div>
 
             <div class="pt-4 flex justify-end">
-                <button onclick="deleteTask()" class="text-red-500 font-bold border-2 border-red-500 rounded-xl px-4 py-2">
+                <button onclick="deleteTask()" class="text-red-500 font-bold border-2 border-red-500 rounded-xl px-4 py-2 hover:bg-red-50 transition">
                     🗑 ลบงานนี้
                 </button>
             </div>
@@ -123,11 +122,26 @@ const groupId = urlParams.get('groupId') || '';
 document.getElementById('addTaskLink').href = `/add-task.html?groupId=${groupId}`;
 
 let allTasks = [];
-let groupMembers = []; // 🐾 เพิ่มตัวแปรเก็บรายชื่อสมาชิก
+let groupMembers = [];
 let currentFilter = 'all';
 let currentOpenTaskId = null;
 
-// 🐾 ฟังก์ชันใหม่สำหรับโหลดรายชื่อสมาชิกจากฐานข้อมูลมาใส่ Dropdown
+// 🐾 ฟังก์ชันจัดฟอร์แมตวันที่และเวลา
+function formatDateTime(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('th-TH', {day: 'numeric', month: 'short'}) + ' ' +
+           d.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) + ' น.';
+}
+
+// 🐾 ฟังก์ชันดึง "หน้าที่" จากช่องคนรับจบมาต่อท้ายชื่อ
+function getDisplayNameWithRole(name, assigneeStr) {
+    if (!assigneeStr) return name;
+    const escapeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = assigneeStr.match(new RegExp(escapeName + '\\s*\\(([^)]+)\\)'));
+    return match ? `${name} (${match[1]})` : name;
+}
+
 async function loadMembers() {
     try {
         const response = await fetch(`/api/members?groupId=${groupId}`);
@@ -137,7 +151,6 @@ async function loadMembers() {
         updaterSelect.innerHTML = '<option value="">👤 เลือกชื่อคนอัปเดต...</option>';
         
         groupMembers.forEach(member => {
-            // ดึง display_name (ชื่อไลน์) มาโชว์
             updaterSelect.innerHTML += `<option value="${member.display_name}">${member.display_name}</option>`;
         });
     } catch (error) {
@@ -180,30 +193,37 @@ function renderTasks(){
                 const history=JSON.parse(task.progress_note);
                 if(Array.isArray(history)&&history.length>0){
                     const last=history[history.length-1];
-                    latestProgress=`<p class="text-xs mt-2 bg-[#FBCFE8] text-[#111] font-bold p-1.5 rounded-lg">
-                        💬 ${last.name} อัปเดต: ${last.note}
-                    </p>`;
+                    const displayNameWithRole = getDisplayNameWithRole(last.name, task.assignee);
+                    const timeStr = formatDateTime(last.date);
+                    
+                    latestProgress=`<div class="mt-2 bg-[#FBCFE8]/50 text-[#111] p-2.5 rounded-xl border-2 border-pink-200">
+                        <div class="flex justify-between items-start mb-0.5">
+                            <span class="text-xs font-extrabold text-pink-600">💬 ${displayNameWithRole}</span>
+                            <span class="text-[10px] font-bold text-gray-500">${timeStr}</span>
+                        </div>
+                        <p class="text-sm font-medium leading-tight">${last.note}</p>
+                    </div>`;
                 }
             }catch{}
         }
 
         const assigneeLabel=task.assignee?
-            `<span class="text-xs font-bold bg-black text-white px-2 py-1 rounded-lg ml-2">${task.assignee}</span>`:'';
+            `<span class="text-xs font-bold bg-black text-white px-2 py-1 rounded-lg ml-2 line-clamp-1 mt-1 inline-block">${task.assignee}</span>`:'';
 
         taskList.insertAdjacentHTML('beforeend',`
-            <div class="rounded-[1.5rem] p-5 flex gap-4 items-start bg-white brutal-border"
+            <div class="rounded-[1.5rem] p-5 flex gap-4 items-start bg-white brutal-border cursor-pointer hover:bg-gray-50 transition"
                  onclick="openModal('${task.id}')">
                 <div onclick="event.stopPropagation()">
                     <input type="checkbox" ${checkboxState}
                            onchange="toggleTaskStatus('${task.id}',this.checked)"
-                           class="w-6 h-6 accent-[#111]">
+                           class="w-6 h-6 accent-[#111] cursor-pointer">
                 </div>
-                <div class="flex-1">
-                    <h3 class="font-extrabold text-lg ${isDone?'line-through':''}">
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-extrabold text-lg leading-tight ${isDone?'line-through text-gray-400':''}">
                         ${task.task_name}
-                        ${assigneeLabel}
                     </h3>
-                    <div class="text-sm">⏰ ${task.deadline||'ไม่ระบุ'}</div>
+                    ${assigneeLabel}
+                    <div class="text-sm text-gray-500 font-bold mt-1">⏰ ${task.deadline||'ไม่ระบุ'}</div>
                     ${latestProgress}
                 </div>
             </div>
@@ -221,7 +241,6 @@ function openModal(taskId){
     document.getElementById('modalDeadline').innerText=task.deadline||'-';
     document.getElementById('modalAssignee').innerText=task.assignee||'-';
 
-    // 🐾 รีเซ็ต Dropdown และช่องพิมพ์ตอนเปิด Modal ใหม่
     document.getElementById('updaterName').value = '';
     document.getElementById('progressInput').value = '';
 
@@ -231,16 +250,25 @@ function openModal(taskId){
     if(task.progress_note){
         try{
             const history=JSON.parse(task.progress_note);
-            history.forEach(h=>{
+            // 🐾 ใช้ slice().reverse() เพื่อสลับให้อันใหม่ล่าสุดขึ้นก่อน
+            history.slice().reverse().forEach(h=>{
+                const displayNameWithRole = getDisplayNameWithRole(h.name, task.assignee);
+                const timeStr = formatDateTime(h.date);
+
                 progressBox.innerHTML+=`
-                    <div class="bg-pink-50 p-2 rounded-xl border-2 border-pink-200 text-sm">
-                        <span class="font-extrabold">${h.name}</span>
-                        <p>${h.note}</p>
+                    <div class="bg-pink-50 p-3 rounded-xl border-2 border-pink-200">
+                        <div class="flex justify-between items-start mb-1 gap-2">
+                            <span class="font-extrabold text-[#111] text-sm">${displayNameWithRole}</span>
+                            <span class="text-[10px] text-gray-500 font-bold whitespace-nowrap mt-0.5">${timeStr}</span>
+                        </div>
+                        <p class="text-sm font-medium text-gray-700">${h.note}</p>
                     </div>
                 `;
             });
             progressBox.classList.remove('hidden');
-        }catch{}
+        }catch(e){ console.error(e) }
+    } else {
+        progressBox.classList.add('hidden');
     }
 
     document.getElementById('taskModal').classList.remove('hidden');
@@ -252,7 +280,7 @@ function closeModal(){
 
 async function saveProgress(){
     const note=document.getElementById('progressInput').value.trim();
-    const name=document.getElementById('updaterName').value; // 🐾 ดึงค่าจาก Dropdown
+    const name=document.getElementById('updaterName').value;
     if(!note||!name)return alert("เมี๊ยว! กรุณาเลือกชื่อคนอัปเดตและพิมพ์ความคืบหน้าด้วยครับ 🐾");
 
     const task=allTasks.find(t=>String(t.id)===String(currentOpenTaskId));
@@ -261,21 +289,32 @@ async function saveProgress(){
         try{ history=JSON.parse(task.progress_note)||[] }catch{}
     }
 
-    history.push({name:name,note:note,date:new Date().toISOString()});
+    // 🐾 เก็บเวลาแบบ ISOString ลงไปในฐานข้อมูลด้วย
+    history.push({name:name, note:note, date:new Date().toISOString()});
 
-    await fetch('/api/update-progress',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            id:currentOpenTaskId,
-            progress_note:JSON.stringify(history),
-            updater_name:name
-        })
-    });
+    const btn = document.getElementById('saveProgressBtn');
+    btn.disabled = true;
+    btn.innerText = '⏳';
 
-    // โหลดข้อมูลใหม่แล้วเปิด Modal ค้างไว้ให้เห็นแชทที่อัปเดต
-    await loadTasks();
-    openModal(currentOpenTaskId);
+    try {
+        await fetch('/api/update-progress',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                id:currentOpenTaskId,
+                progress_note:JSON.stringify(history),
+                updater_name:name
+            })
+        });
+
+        await loadTasks();
+        openModal(currentOpenTaskId);
+    } catch(err) {
+        alert('อัปเดตไม่สำเร็จเมี๊ยว 😿');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'ส่ง';
+    }
 }
 
 async function toggleTaskStatus(id,checked){
@@ -300,7 +339,7 @@ async function deleteTask(){
 
 async function triggerAISummary(){
     const btn = document.querySelector('button[onclick="triggerAISummary()"]');
-    btn.innerHTML = '⏳'; // เปลี่ยนไอคอนตอนกำลังโหลด
+    btn.innerHTML = '⏳';
     
     await fetch('/api/ai-summary',{
         method:'POST',
@@ -312,7 +351,6 @@ async function triggerAISummary(){
     alert("ส่งสรุปเข้า LINE กลุ่มเรียบร้อยแล้วเมี๊ยว! 🚀");
 }
 
-// 🐾 โหลดทั้งงานและรายชื่อสมาชิกตอนเปิดเว็บ
 loadMembers();
 loadTasks();
 </script>
