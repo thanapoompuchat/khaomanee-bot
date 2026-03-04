@@ -17,11 +17,17 @@ const lineConfig = {
     channelSecret: process.env.LINE_CHANNEL_SECRET
 };
 
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
+    console.error('❌ Missing SUPABASE_URL or SUPABASE_KEY');
+    process.exit(1);
+}
+
 const client = new line.Client(lineConfig);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY // ⚠️ ต้องใช้ตัวนี้
+    process.env.SUPABASE_KEY
 );
 
 /* ==========================================
@@ -77,7 +83,6 @@ async function handleEvent(event) {
         event.replyToken === 'ffffffffffffffffffffffffffffffff'
     ) return null;
 
-    // 🔥 ทุก event ให้ sync สมาชิกก่อน
     await syncMember(event);
 
     const groupId =
@@ -220,7 +225,7 @@ cron.schedule('0 8 * * *', async () => {
             .select('*')
             .eq('status', 'todo');
 
-        if (!pendingTasks) return;
+        if (!pendingTasks || pendingTasks.length === 0) return;
 
         const tasksByGroup = {};
 
