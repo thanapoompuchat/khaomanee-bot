@@ -30,6 +30,9 @@ const supabase = createClient(
     process.env.SUPABASE_KEY
 );
 
+// 🔥 ตั้ง BASE_URL ให้ชัด ๆ
+const BASE_URL = process.env.BASE_URL || 'https://khaomanee-bot.onrender.com';
+
 /* ==========================================
    🟢 WEBHOOK
 ========================================== */
@@ -92,35 +95,13 @@ async function handleEvent(event) {
                 ? event.source.roomId
                 : event.source.userId;
 
-    const baseUrl = process.env.BASE_URL || 'https://line.me';
-
-    /* ================= JOIN / FOLLOW ================= */
-
     if (event.type === 'join' || event.type === 'follow') {
 
-        const welcomeFlex = {
-            type: "flex",
-            altText: "สวัสดีเมี๊ยว! ขาวมณีพร้อมช่วยงานแล้ว",
-            contents: {
-                type: "bubble",
-                body: {
-                    type: "box",
-                    layout: "vertical",
-                    contents: [
-                        { type: "text", text: "ขาวมณีมาแล้วเมี๊ยว 🐱", weight: "bold", size: "lg" },
-                        { type: "text", text: "กดดูงานหรือจดงานใหม่ได้เลย", margin: "md" }
-                    ]
-                }
-            }
-        };
-
-        return client.replyMessage(event.replyToken, [
-            { type: 'text', text: 'สวัสดีเมี๊ยว! ขาวมณีมาแล้วเจ้าค่ะ' },
-            welcomeFlex
-        ]);
+        return client.replyMessage(event.replyToken, {
+            type: 'text',
+            text: 'สวัสดีเมี๊ยว! ขาวมณีพร้อมช่วยงานแล้ว 🐱'
+        });
     }
-
-    /* ================= MESSAGE ================= */
 
     if (event.type === 'message' && event.message.type === 'text') {
 
@@ -129,53 +110,28 @@ async function handleEvent(event) {
         if (userText === 'ขาวมณี') {
             return client.replyMessage(event.replyToken, {
                 type: 'text',
-                text: 'เรียกขาวมณีมีอะไรให้ช่วยไหมเมี๊ยว?',
+                text: 'เลือกเมนูได้เลยเมี๊ยว 👇',
                 quickReply: {
                     items: [
-                        { type: 'action', action: { type: 'uri', label: '📋 กระดานงาน', uri: `${baseUrl}/?groupId=${groupId}` } },
-                        { type: 'action', action: { type: 'uri', label: '📝 จดงานใหม่', uri: `${baseUrl}/add-task?groupId=${groupId}` } }
+                        {
+                            type: 'action',
+                            action: {
+                                type: 'uri',
+                                label: '📋 กระดานงาน',
+                                uri: `${BASE_URL}/?groupId=${groupId}`
+                            }
+                        },
+                        {
+                            type: 'action',
+                            action: {
+                                type: 'uri',
+                                label: '📝 จดงานใหม่',
+                                uri: `${BASE_URL}/add-task.html?groupId=${groupId}`
+                            }
+                        }
                     ]
                 }
             });
-        }
-
-        /* ========= AI CREATE TASK ========= */
-
-        if (userText.startsWith('ขาวมณีจด')) {
-            const taskCommand = userText.replace('ขาวมณีจด', '').trim();
-
-            try {
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-                const prompt = `
-                สกัดข้อมูลงานเป็น JSON:
-                { "taskName": "...", "assignee": "..." }
-                จากข้อความ: "${taskCommand}"
-                `;
-
-                const result = await model.generateContent(prompt);
-                const raw = result.response.text().replace(/```json|```/g, '').trim();
-                const taskData = JSON.parse(raw);
-
-                await supabase.from('tasks').insert([{
-                    task_name: taskData.taskName || "งานที่ไม่ได้ตั้งชื่อ",
-                    assignee: taskData.assignee || "ยังไม่ระบุ",
-                    status: 'todo',
-                    group_id: groupId
-                }]);
-
-                return client.replyMessage(event.replyToken, {
-                    type: 'text',
-                    text: `📝 จดงาน "${taskData.taskName}" ให้แล้วเมี๊ยว!`
-                });
-
-            } catch (err) {
-                console.error(err);
-                return client.replyMessage(event.replyToken, {
-                    type: 'text',
-                    text: "ขาวมณีงง พิมพ์ใหม่อีกทีนะเมี๊ยว 🐾"
-                });
-            }
         }
     }
 
@@ -212,6 +168,41 @@ app.get('/api/members', async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
 
     res.json(data);
+});
+
+/* ==========================================
+   🆕 ADD TASK API (ของที่มึงขาด)
+========================================== */
+
+app.post('/api/add-task', async (req, res) => {
+    try {
+        const { taskName, description, deadline, groupId } = req.body;
+
+        if (!taskName) {
+            return res.status(400).json({ success: false });
+        }
+
+        const { error } = await supabase
+            .from('tasks')
+            .insert([{
+                task_name: taskName,
+                description: description || null,
+                deadline: deadline || null,
+                status: 'todo',
+                group_id: groupId || 'personal'
+            }]);
+
+        if (error) {
+            console.error(error);
+            return res.status(500).json({ success: false });
+        }
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error('Add task error:', err);
+        res.status(500).json({ success: false });
+    }
 });
 
 /* ==========================================
