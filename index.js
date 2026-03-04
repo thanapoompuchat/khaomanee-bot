@@ -251,7 +251,7 @@ app.post('/api/ai-summary', async (req, res) => {
         const prompt = `คุณคือ 'ขาวมณี' ผู้ช่วยแมวเหมียวสุดน่ารัก กวนนิดๆ เป็นกันเอง ช่วยสรุปรายการงานของกลุ่มนี้ให้หน่อย ให้อ่านง่ายๆ แบ่งเป็นงานที่เสร็จแล้วกับงานที่ค้างอยู่ ใช้ Emoji ประกอบด้วยนะเมี๊ยว\n\nข้อมูลงาน:\n${taskData}`;
 
         // เรียกใช้งาน Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const aiResponse = result.response.text();
 
