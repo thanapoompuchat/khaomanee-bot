@@ -169,7 +169,7 @@ app.get('/api/members', async (req, res) => {
     res.json(data);
 });
 
-// 🆕 API สำหรับเพิ่มงาน (แก้ให้รับ assignee ด้วย)
+// 🆕 API สำหรับเพิ่มงาน (แถม Flex Message สุดคิวท์)
 app.post('/api/add-task', async (req, res) => {
     try {
         const { taskName, description, deadline, assignee, groupId } = req.body;
@@ -185,7 +185,7 @@ app.post('/api/add-task', async (req, res) => {
                 description: description || null,
                 deadline: deadline || null,
                 status: 'todo',
-                assignee: assignee || null, // 🐾 บันทึกชื่อคนรับจบตั้งแต่ตอนสร้างงาน
+                assignee: assignee || null,
                 group_id: groupId || 'personal'
             }]);
 
@@ -193,6 +193,131 @@ app.post('/api/add-task', async (req, res) => {
             console.error(error);
             return res.status(500).json({ success: false });
         }
+
+        // ==========================================
+        // 🐾 ส่ง Flex Message แจ้งเตือนเข้ากลุ่ม LINE
+        // ==========================================
+        if (groupId && groupId !== 'personal') {
+            try {
+                // จัดการรายชื่อและหน้าที่
+                const assigneeList = assignee ? assignee.split(',').map(s => s.trim()) : [];
+                const assigneeContents = assigneeList.length > 0 ? assigneeList.map(item => {
+                    const match = item.match(/^(.*?)\s*\(([^)]+)\)$/);
+                    const name = match ? match[1] : item;
+                    const role = match ? match[2] : 'ทั่วไป';
+                    
+                    return {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "md",
+                        "contents": [
+                            { "type": "text", "text": "👤 " + name, "size": "sm", "color": "#111111", "weight": "bold", "flex": 2 },
+                            { "type": "text", "text": role, "size": "sm", "color": "#A1A1AA", "align": "end", "flex": 1 }
+                        ]
+                    };
+                }) : [
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "margin": "md",
+                        "contents": [
+                            { "type": "text", "text": "ยังไม่มีคนรับจบ 😿", "size": "sm", "color": "#A1A1AA", "align": "start" }
+                        ]
+                    }
+                ];
+
+                const flexMessage = {
+                    "type": "flex",
+                    "altText": `✨ มีงานใหม่เข้ามา: ${taskName}`,
+                    "contents": {
+                        "type": "bubble",
+                        "size": "mega",
+                        "body": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "paddingAll": "0px",
+                            "contents": [
+                                // Header สีชมพู
+                                {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "backgroundColor": "#FBCFE8",
+                                    "paddingAll": "25px",
+                                    "contents": [
+                                        { "type": "text", "text": "✨ มีงานใหม่เข้ามาเมี๊ยว!", "weight": "bold", "color": "#ec4899", "size": "xs" },
+                                        { "type": "text", "text": taskName, "weight": "bold", "size": "xl", "color": "#111111", "wrap": true, "margin": "md" },
+                                        { "type": "text", "text": description || "ไม่มีรายละเอียด", "size": "sm", "color": "#52525b", "wrap": true, "margin": "sm" },
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "margin": "xl",
+                                            "contents": [
+                                                { "type": "text", "text": "⏰ เดดไลน์:", "size": "xs", "color": "#111111", "weight": "bold", "flex": 0 },
+                                                { "type": "text", "text": deadline || "ไม่ระบุ", "size": "xs", "color": "#ef4444", "weight": "bold", "margin": "sm" }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                // รูปแมวเกาะมุมขวาบน
+                                {
+                                    "type": "image",
+                                    "url": "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/4.png",
+                                    "position": "absolute",
+                                    "align": "end",
+                                    "offsetTop": "15px",
+                                    "offsetEnd": "15px",
+                                    "size": "xs"
+                                },
+                                // พื้นที่แสดงรายชื่อ
+                                {
+                                    "type": "box",
+                                    "layout": "vertical",
+                                    "paddingAll": "25px",
+                                    "backgroundColor": "#ffffff",
+                                    "contents": [
+                                        {
+                                            "type": "box",
+                                            "layout": "horizontal",
+                                            "margin": "none",
+                                            "paddingBottom": "10px",
+                                            "contents": [
+                                                { "type": "text", "text": "ชื่อคนทำ", "size": "xs", "color": "#a1a1aa", "weight": "bold", "flex": 2 },
+                                                { "type": "text", "text": "หน้าที่", "size": "xs", "color": "#a1a1aa", "weight": "bold", "align": "end", "flex": 1 }
+                                            ]
+                                        },
+                                        { "type": "separator", "color": "#f4f4f5" },
+                                        ...assigneeContents
+                                    ]
+                                }
+                            ]
+                        },
+                        "footer": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "paddingAll": "20px",
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "uri",
+                                        "label": "ดูรายละเอียด 🐾",
+                                        "uri": `${BASE_URL}/?groupId=${groupId}`
+                                    },
+                                    "style": "primary",
+                                    "color": "#D8707A",
+                                    "height": "sm"
+                                }
+                            ]
+                        }
+                    }
+                };
+
+                await client.pushMessage(groupId, flexMessage);
+            } catch (flexError) {
+                console.error('ส่ง Flex Message ไม่สำเร็จ:', flexError);
+            }
+        }
+
         res.json({ success: true });
     } catch (err) {
         console.error('Add task error:', err);
