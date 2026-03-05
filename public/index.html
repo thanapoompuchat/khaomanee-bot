@@ -76,11 +76,11 @@
             <div class="flex gap-4">
                 <div class="flex-1">
                     <p class="font-bold text-gray-500 mb-1 uppercase text-xs">เดดไลน์</p>
-                    <p id="modalDeadline" class="font-bold text-[#111] text-lg"></p>
+                    <p id="modalDeadline" class="font-bold text-[#111] text-lg mt-1"></p>
                 </div>
                 <div class="flex-1">
                     <p class="font-bold text-gray-500 mb-1 uppercase text-xs">คนรับจบ</p>
-                    <p id="modalAssignee" class="font-bold text-[#111] text-lg bg-[#FBCFE8] px-2 py-1 rounded-lg inline-block"></p>
+                    <div id="modalAssignee" class="mt-1 flex flex-col gap-1"></div>
                 </div>
             </div>
 
@@ -104,10 +104,10 @@
                     </div>
                 </div>
 
-                <div id="progressHistory" class="space-y-2 max-h-48 overflow-y-auto hidden"></div>
+                <div id="progressHistory" class="max-h-56 overflow-y-auto hidden pb-2"></div>
             </div>
 
-            <div class="pt-4 flex justify-end">
+            <div class="pt-2 flex justify-end">
                 <button onclick="deleteTask()" class="text-red-500 font-bold border-2 border-red-500 rounded-xl px-4 py-2 hover:bg-red-50 transition">
                     🗑 ลบงานนี้
                 </button>
@@ -134,7 +134,29 @@ function formatDateTime(isoStr) {
            d.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) + ' น.';
 }
 
-// 🐾 ฟังก์ชันดึง "หน้าที่" จากช่องคนรับจบมาต่อท้ายชื่อ
+// 🐾 ฟังก์ชันดึง "หน้าที่" ออกมาจากชื่อที่กรอก (เช่น "James (สารบัญ)" จะได้ "สารบัญ")
+function getRoleFromName(name, assigneeStr) {
+    if (!assigneeStr) return 'ทั่วไป';
+    const escapeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = assigneeStr.match(new RegExp(escapeName + '\\s*\\(([^)]+)\\)'));
+    return match ? match[1] : 'ทั่วไป';
+}
+
+// 🐾 ฟังก์ชันตกแต่ง Tag ตรงหัวข้อ "คนรับจบ" ให้มีป้ายบอกหน้าที่สวยๆ
+function formatAssigneesForModal(assigneeStr) {
+    if (!assigneeStr || assigneeStr.trim() === '') return '<span class="text-gray-400 font-medium text-base">-</span>';
+    return assigneeStr.split(',').map(item => {
+        const match = item.trim().match(/^(.*?)\s*\(([^)]+)\)$/);
+        if(match) {
+            return `<div class="bg-[#FBCFE8] px-2 py-1.5 rounded-lg inline-block font-bold text-[#111] text-sm shadow-sm">
+                ${match[1]} <span class="bg-black text-white px-1.5 py-0.5 rounded-md text-[10px] ml-1 uppercase">${match[2]}</span>
+            </div>`;
+        }
+        return `<div class="bg-[#FBCFE8] px-2 py-1.5 rounded-lg inline-block font-bold text-[#111] text-sm shadow-sm">${item.trim()}</div>`;
+    }).join('');
+}
+
+// 🐾 สำหรับหน้าการ์ดหลัก
 function getDisplayNameWithRole(name, assigneeStr) {
     if (!assigneeStr) return name;
     const escapeName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -239,7 +261,9 @@ function openModal(taskId){
     document.getElementById('modalTitle').innerText=task.task_name;
     document.getElementById('modalDesc').innerText=task.description||'-';
     document.getElementById('modalDeadline').innerText=task.deadline||'-';
-    document.getElementById('modalAssignee').innerText=task.assignee||'-';
+    
+    // 🐾 เรียกใช้ฟังก์ชันที่แปลงหน้าตาป้าย คนรับจบ
+    document.getElementById('modalAssignee').innerHTML=formatAssigneesForModal(task.assignee);
 
     document.getElementById('updaterName').value = '';
     document.getElementById('progressInput').value = '';
@@ -250,21 +274,39 @@ function openModal(taskId){
     if(task.progress_note){
         try{
             const history=JSON.parse(task.progress_note);
-            // 🐾 ใช้ slice().reverse() เพื่อสลับให้อันใหม่ล่าสุดขึ้นก่อน
-            history.slice().reverse().forEach(h=>{
-                const displayNameWithRole = getDisplayNameWithRole(h.name, task.assignee);
-                const timeStr = formatDateTime(h.date);
+            // พลิกเอาใหม่สุดขึ้นก่อน
+            const reversedHistory = history.slice().reverse();
+            
+            // 🐾 จัดกลุ่มประวัติตามหน้าที่
+            const grouped = {};
+            reversedHistory.forEach(h => {
+                const role = getRoleFromName(h.name, task.assignee);
+                if (!grouped[role]) grouped[role] = [];
+                grouped[role].push(h);
+            });
 
-                progressBox.innerHTML+=`
-                    <div class="bg-pink-50 p-3 rounded-xl border-2 border-pink-200">
-                        <div class="flex justify-between items-start mb-1 gap-2">
-                            <span class="font-extrabold text-[#111] text-sm">${displayNameWithRole}</span>
-                            <span class="text-[10px] text-gray-500 font-bold whitespace-nowrap mt-0.5">${timeStr}</span>
-                        </div>
-                        <p class="text-sm font-medium text-gray-700">${h.note}</p>
+            // 🐾 เรนเดอร์แยกตามกลุ่มหน้าที่
+            for (const role in grouped) {
+                // สร้างหัวข้อหน้าที่
+                progressBox.innerHTML += `
+                    <div class="mb-2 mt-4 first:mt-0">
+                        <span class="bg-[#111] text-white text-xs font-extrabold px-3 py-1.5 rounded-lg shadow-sm">📌 หน้าที่: ${role}</span>
                     </div>
                 `;
-            });
+                // สร้างกล่องแชทย่อยในหน้าที่นั้นๆ
+                grouped[role].forEach(h => {
+                    const timeStr = formatDateTime(h.date);
+                    progressBox.innerHTML += `
+                        <div class="bg-pink-50 p-3 rounded-xl border-2 border-pink-200 mb-2 ml-2">
+                            <div class="flex justify-between items-start mb-1 gap-2">
+                                <span class="font-extrabold text-[#111] text-sm">${h.name}</span>
+                                <span class="text-[10px] text-gray-500 font-bold whitespace-nowrap mt-0.5">${timeStr}</span>
+                            </div>
+                            <p class="text-sm font-medium text-gray-700">${h.note}</p>
+                        </div>
+                    `;
+                });
+            }
             progressBox.classList.remove('hidden');
         }catch(e){ console.error(e) }
     } else {
@@ -289,7 +331,6 @@ async function saveProgress(){
         try{ history=JSON.parse(task.progress_note)||[] }catch{}
     }
 
-    // 🐾 เก็บเวลาแบบ ISOString ลงไปในฐานข้อมูลด้วย
     history.push({name:name, note:note, date:new Date().toISOString()});
 
     const btn = document.getElementById('saveProgressBtn');
