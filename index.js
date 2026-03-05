@@ -169,7 +169,7 @@ app.get('/api/members', async (req, res) => {
     res.json(data);
 });
 
-// 🆕 API สำหรับเพิ่มงาน (แถม Flex Message สุดคิวท์)
+// 🆕 API สำหรับเพิ่มงาน (Flex Message อัปเกรดความสวยระดับพรีเมียม ✨)
 app.post('/api/add-task', async (req, res) => {
     try {
         const { taskName, description, deadline, assignee, groupId } = req.body;
@@ -178,6 +178,7 @@ app.post('/api/add-task', async (req, res) => {
             return res.status(400).json({ success: false });
         }
 
+        // บันทึกงานลง Database
         const { error } = await supabase
             .from('tasks')
             .insert([{
@@ -199,7 +200,7 @@ app.post('/api/add-task', async (req, res) => {
         // ==========================================
         if (groupId && groupId !== 'personal') {
             try {
-                // จัดการรายชื่อและหน้าที่
+                // จัดการรายชื่อและหน้าที่ให้ดูเป็นระเบียบขึ้น
                 const assigneeList = assignee ? assignee.split(',').map(s => s.trim()) : [];
                 const assigneeContents = assigneeList.length > 0 ? assigneeList.map(item => {
                     const match = item.match(/^(.*?)\s*\(([^)]+)\)$/);
@@ -209,19 +210,27 @@ app.post('/api/add-task', async (req, res) => {
                     return {
                         "type": "box",
                         "layout": "horizontal",
-                        "margin": "md",
+                        "alignItems": "center",
                         "contents": [
-                            { "type": "text", "text": "👤 " + name, "size": "sm", "color": "#111111", "weight": "bold", "flex": 2 },
-                            { "type": "text", "text": role, "size": "sm", "color": "#A1A1AA", "align": "end", "flex": 1 }
+                            {
+                                "type": "box",
+                                "layout": "horizontal",
+                                "flex": 2,
+                                "alignItems": "center",
+                                "contents": [
+                                    { "type": "text", "text": "🐱", "flex": 0, "size": "sm" },
+                                    { "type": "text", "text": name, "size": "md", "color": "#1f2937", "weight": "bold", "margin": "sm", "wrap": true }
+                                ]
+                            },
+                            { "type": "text", "text": role, "size": "sm", "color": "#6b7280", "align": "end", "flex": 1 }
                         ]
                     };
                 }) : [
                     {
                         "type": "box",
                         "layout": "horizontal",
-                        "margin": "md",
                         "contents": [
-                            { "type": "text", "text": "ยังไม่มีคนรับจบ 😿", "size": "sm", "color": "#A1A1AA", "align": "start" }
+                            { "type": "text", "text": "ยังไม่มีคนรับจบ 😿", "size": "md", "color": "#9ca3af", "align": "start", "weight": "bold" }
                         ]
                     }
                 ];
@@ -237,28 +246,39 @@ app.post('/api/add-task', async (req, res) => {
                             "layout": "vertical",
                             "paddingAll": "0px",
                             "contents": [
-                                // Header สีชมพู
+                                // Header ไล่สี (Gradient) โทนชมพูพาสเทล
                                 {
                                     "type": "box",
                                     "layout": "vertical",
-                                    "backgroundColor": "#FBCFE8",
                                     "paddingAll": "25px",
+                                    "background": {
+                                        "type": "linearGradient",
+                                        "angle": "135deg",
+                                        "startColor": "#fdf2f8", // ชมพูอ่อนสุด
+                                        "endColor": "#fbcfe8"    // ชมพูพาสเทล
+                                    },
                                     "contents": [
-                                        { "type": "text", "text": "✨ มีงานใหม่เข้ามาเมี๊ยว!", "weight": "bold", "color": "#ec4899", "size": "xs" },
-                                        { "type": "text", "text": taskName, "weight": "bold", "size": "xl", "color": "#111111", "wrap": true, "margin": "md" },
-                                        { "type": "text", "text": description || "ไม่มีรายละเอียด", "size": "sm", "color": "#52525b", "wrap": true, "margin": "sm" },
+                                        { "type": "text", "text": "✨ มีงานใหม่เข้ามาเมี๊ยว!", "weight": "bold", "color": "#db2777", "size": "sm" },
+                                        { "type": "text", "text": taskName, "weight": "bold", "size": "xxl", "color": "#111827", "wrap": true, "margin": "md" },
+                                        { "type": "text", "text": description || "ไม่มีรายละเอียด", "size": "md", "color": "#4b5563", "wrap": true, "margin": "md" },
+                                        
+                                        // กล่องไฮไลต์เดดไลน์พื้นหลังขาวโปร่งแสง
                                         {
                                             "type": "box",
                                             "layout": "horizontal",
                                             "margin": "xl",
+                                            "backgroundColor": "#ffffffAA",
+                                            "cornerRadius": "lg",
+                                            "paddingAll": "12px",
+                                            "alignItems": "center",
                                             "contents": [
-                                                { "type": "text", "text": "⏰ เดดไลน์:", "size": "xs", "color": "#111111", "weight": "bold", "flex": 0 },
-                                                { "type": "text", "text": deadline || "ไม่ระบุ", "size": "xs", "color": "#ef4444", "weight": "bold", "margin": "sm" }
+                                                { "type": "text", "text": "⏰ เดดไลน์:", "size": "sm", "color": "#374151", "weight": "bold", "flex": 0 },
+                                                { "type": "text", "text": deadline || "ไม่ระบุ", "size": "sm", "color": "#e11d48", "weight": "bold", "margin": "md" }
                                             ]
                                         }
                                     ]
                                 },
-                                // รูปแมวเกาะมุมขวาบน
+                                // รูปน้องแมว ปรับไซส์เป็น md ให้สะใจ วางตำแหน่งให้เป๊ะ
                                 {
                                     "type": "image",
                                     "url": "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/4.png",
@@ -266,27 +286,33 @@ app.post('/api/add-task', async (req, res) => {
                                     "align": "end",
                                     "offsetTop": "15px",
                                     "offsetEnd": "15px",
-                                    "size": "xs"
+                                    "size": "md" 
                                 },
-                                // พื้นที่แสดงรายชื่อ
+                                // พื้นที่แสดงรายชื่อ พื้นขาว คลีนๆ
                                 {
                                     "type": "box",
                                     "layout": "vertical",
                                     "paddingAll": "25px",
+                                    "paddingTop": "20px",
                                     "backgroundColor": "#ffffff",
                                     "contents": [
                                         {
                                             "type": "box",
                                             "layout": "horizontal",
-                                            "margin": "none",
-                                            "paddingBottom": "10px",
+                                            "paddingBottom": "12px",
                                             "contents": [
-                                                { "type": "text", "text": "ชื่อคนทำ", "size": "xs", "color": "#a1a1aa", "weight": "bold", "flex": 2 },
-                                                { "type": "text", "text": "หน้าที่", "size": "xs", "color": "#a1a1aa", "weight": "bold", "align": "end", "flex": 1 }
+                                                { "type": "text", "text": "รายชื่อคนรับจบ", "size": "sm", "color": "#9ca3af", "weight": "bold", "flex": 2 },
+                                                { "type": "text", "text": "หน้าที่", "size": "sm", "color": "#9ca3af", "weight": "bold", "align": "end", "flex": 1 }
                                             ]
                                         },
-                                        { "type": "separator", "color": "#f4f4f5" },
-                                        ...assigneeContents
+                                        { "type": "separator", "color": "#f3f4f6" },
+                                        {
+                                            "type": "box",
+                                            "layout": "vertical",
+                                            "margin": "md",
+                                            "spacing": "md",
+                                            "contents": assigneeContents
+                                        }
                                     ]
                                 }
                             ]
@@ -294,7 +320,8 @@ app.post('/api/add-task', async (req, res) => {
                         "footer": {
                             "type": "box",
                             "layout": "vertical",
-                            "paddingAll": "20px",
+                            "paddingAll": "25px",
+                            "paddingTop": "0px",
                             "contents": [
                                 {
                                     "type": "button",
@@ -304,7 +331,7 @@ app.post('/api/add-task', async (req, res) => {
                                         "uri": `${BASE_URL}/?groupId=${groupId}`
                                     },
                                     "style": "primary",
-                                    "color": "#D8707A",
+                                    "color": "#f43f5e", // สีชมพูอมแดงแบบโมเดิร์น
                                     "height": "sm"
                                 }
                             ]
