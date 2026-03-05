@@ -169,7 +169,7 @@ app.get('/api/members', async (req, res) => {
     res.json(data);
 });
 
-// 🆕 API สำหรับเพิ่มงาน (Flex Message อัปเกรดความสวยระดับพรีเมียม ✨)
+// 🆕 API สำหรับเพิ่มงาน (Flex Message อัปเกรด Native LINE Style ✨)
 app.post('/api/add-task', async (req, res) => {
     try {
         const { taskName, description, deadline, assignee, groupId } = req.body;
@@ -200,7 +200,7 @@ app.post('/api/add-task', async (req, res) => {
         // ==========================================
         if (groupId && groupId !== 'personal') {
             try {
-                // จัดการรายชื่อและหน้าที่ให้ดูเป็นระเบียบขึ้น
+                // จัดสไตล์รายชื่อให้เป็นสไตล์ของแอป LINE
                 const assigneeList = assignee ? assignee.split(',').map(s => s.trim()) : [];
                 const assigneeContents = assigneeList.length > 0 ? assigneeList.map(item => {
                     const match = item.match(/^(.*?)\s*\(([^)]+)\)$/);
@@ -210,7 +210,7 @@ app.post('/api/add-task', async (req, res) => {
                     return {
                         "type": "box",
                         "layout": "horizontal",
-                        "alignItems": "center",
+                        "alignItems": "flex-start",
                         "contents": [
                             {
                                 "type": "box",
@@ -218,11 +218,11 @@ app.post('/api/add-task', async (req, res) => {
                                 "flex": 2,
                                 "alignItems": "center",
                                 "contents": [
-                                    { "type": "text", "text": "🐱", "flex": 0, "size": "sm" },
-                                    { "type": "text", "text": name, "size": "md", "color": "#1f2937", "weight": "bold", "margin": "sm", "wrap": true }
+                                    { "type": "text", "text": "🐱", "flex": 0, "size": "sm", "margin": "none" },
+                                    { "type": "text", "text": name, "size": "sm", "color": "#111111", "weight": "bold", "margin": "md", "wrap": true }
                                 ]
                             },
-                            { "type": "text", "text": role, "size": "sm", "color": "#6b7280", "align": "end", "flex": 1 }
+                            { "type": "text", "text": role, "size": "xs", "color": "#888888", "align": "end", "flex": 1, "margin": "sm", "offsetTop": "2px" }
                         ]
                     };
                 }) : [
@@ -230,7 +230,7 @@ app.post('/api/add-task', async (req, res) => {
                         "type": "box",
                         "layout": "horizontal",
                         "contents": [
-                            { "type": "text", "text": "ยังไม่มีคนรับจบ 😿", "size": "md", "color": "#9ca3af", "align": "start", "weight": "bold" }
+                            { "type": "text", "text": "ยังไม่มีคนรับจบ 😿", "size": "sm", "color": "#bbbbbb", "align": "start", "weight": "bold" }
                         ]
                     }
                 ];
@@ -246,71 +246,74 @@ app.post('/api/add-task', async (req, res) => {
                             "layout": "vertical",
                             "paddingAll": "0px",
                             "contents": [
-                                // Header ไล่สี (Gradient) โทนชมพูพาสเทล
+                                // Header โทนสีละมุน และเว้นที่เผื่อแมว
                                 {
                                     "type": "box",
                                     "layout": "vertical",
-                                    "paddingAll": "25px",
+                                    "paddingAll": "24px",
+                                    "paddingTop": "28px",
                                     "background": {
                                         "type": "linearGradient",
                                         "angle": "135deg",
-                                        "startColor": "#fdf2f8", // ชมพูอ่อนสุด
-                                        "endColor": "#fbcfe8"    // ชมพูพาสเทล
+                                        "startColor": "#fdf2f8", 
+                                        "endColor": "#fce7f3"    
                                     },
                                     "contents": [
-                                        { "type": "text", "text": "✨ มีงานใหม่เข้ามาเมี๊ยว!", "weight": "bold", "color": "#db2777", "size": "sm" },
-                                        { "type": "text", "text": taskName, "weight": "bold", "size": "xxl", "color": "#111827", "wrap": true, "margin": "md" },
-                                        { "type": "text", "text": description || "ไม่มีรายละเอียด", "size": "md", "color": "#4b5563", "wrap": true, "margin": "md" },
+                                        { "type": "text", "text": "✨ มีงานใหม่เข้ามาเมี๊ยว!", "weight": "bold", "color": "#e11d48", "size": "xs" },
+                                        { "type": "text", "text": taskName, "weight": "bold", "size": "xxl", "color": "#111111", "wrap": true, "margin": "md", "flex": 1, "maxWidth": "75%" },
+                                        { "type": "text", "text": description || "ไม่มีรายละเอียด", "size": "sm", "color": "#666666", "wrap": true, "margin": "md", "maxWidth": "85%" },
                                         
-                                        // กล่องไฮไลต์เดดไลน์พื้นหลังขาวโปร่งแสง
+                                        // กล่องเดดไลน์ คลีนๆ
                                         {
                                             "type": "box",
                                             "layout": "horizontal",
                                             "margin": "xl",
-                                            "backgroundColor": "#ffffffAA",
+                                            "backgroundColor": "#ffffffcc",
                                             "cornerRadius": "lg",
-                                            "paddingAll": "12px",
+                                            "paddingAll": "10px",
+                                            "paddingStart": "14px",
+                                            "paddingEnd": "14px",
                                             "alignItems": "center",
                                             "contents": [
-                                                { "type": "text", "text": "⏰ เดดไลน์:", "size": "sm", "color": "#374151", "weight": "bold", "flex": 0 },
-                                                { "type": "text", "text": deadline || "ไม่ระบุ", "size": "sm", "color": "#e11d48", "weight": "bold", "margin": "md" }
+                                                { "type": "text", "text": "⏰ เดดไลน์:", "size": "xs", "color": "#555555", "weight": "bold", "flex": 0 },
+                                                { "type": "text", "text": deadline || "ไม่ระบุ", "size": "xs", "color": "#e11d48", "weight": "bold", "margin": "md" }
                                             ]
                                         }
                                     ]
                                 },
-                                // รูปน้องแมว ปรับไซส์เป็น md ให้สะใจ วางตำแหน่งให้เป๊ะ
+                                // รูปแมวเล่นมุมขวาบน
                                 {
                                     "type": "image",
                                     "url": "https://qkwsuionwswlxjilsegh.supabase.co/storage/v1/object/public/bot-assets/4.png",
                                     "position": "absolute",
                                     "align": "end",
-                                    "offsetTop": "15px",
-                                    "offsetEnd": "15px",
-                                    "size": "md" 
+                                    "offsetTop": "0px",
+                                    "offsetEnd": "-10px", // ดันออกขวาไปนิดนึงให้ดูเหมือนแอบโผล่มา
+                                    "size": "xl", // ปรับขนาดให้ใหญ่ขึ้น
+                                    "aspectMode": "fit"
                                 },
-                                // พื้นที่แสดงรายชื่อ พื้นขาว คลีนๆ
+                                // กล่องคนทำงานสีขาวล้วน
                                 {
                                     "type": "box",
                                     "layout": "vertical",
-                                    "paddingAll": "25px",
-                                    "paddingTop": "20px",
+                                    "paddingAll": "24px",
                                     "backgroundColor": "#ffffff",
                                     "contents": [
                                         {
                                             "type": "box",
                                             "layout": "horizontal",
-                                            "paddingBottom": "12px",
+                                            "paddingBottom": "10px",
                                             "contents": [
-                                                { "type": "text", "text": "รายชื่อคนรับจบ", "size": "sm", "color": "#9ca3af", "weight": "bold", "flex": 2 },
-                                                { "type": "text", "text": "หน้าที่", "size": "sm", "color": "#9ca3af", "weight": "bold", "align": "end", "flex": 1 }
+                                                { "type": "text", "text": "รายชื่อคนรับจบ", "size": "xs", "color": "#aaaaaa", "weight": "bold", "flex": 2 },
+                                                { "type": "text", "text": "หน้าที่", "size": "xs", "color": "#aaaaaa", "weight": "bold", "align": "end", "flex": 1 }
                                             ]
                                         },
-                                        { "type": "separator", "color": "#f3f4f6" },
+                                        { "type": "separator", "color": "#f0f0f0" },
                                         {
                                             "type": "box",
                                             "layout": "vertical",
                                             "margin": "md",
-                                            "spacing": "md",
+                                            "spacing": "sm",
                                             "contents": assigneeContents
                                         }
                                     ]
@@ -320,7 +323,7 @@ app.post('/api/add-task', async (req, res) => {
                         "footer": {
                             "type": "box",
                             "layout": "vertical",
-                            "paddingAll": "25px",
+                            "paddingAll": "24px",
                             "paddingTop": "0px",
                             "contents": [
                                 {
@@ -331,7 +334,7 @@ app.post('/api/add-task', async (req, res) => {
                                         "uri": `${BASE_URL}/?groupId=${groupId}`
                                     },
                                     "style": "primary",
-                                    "color": "#f43f5e", // สีชมพูอมแดงแบบโมเดิร์น
+                                    "color": "#f43f5e",
                                     "height": "sm"
                                 }
                             ]
