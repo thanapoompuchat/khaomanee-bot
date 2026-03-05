@@ -344,7 +344,8 @@ async function saveProgress(){
             body:JSON.stringify({
                 id:currentOpenTaskId,
                 progress_note:JSON.stringify(history),
-                updater_name:name
+                // 🚨 สำคัญมาก: ส่งรายชื่อ assignee เดิมกลับไป เพื่อไม่ให้หลังบ้านทับข้อมูลหาย!
+                updater_name: task.assignee || name 
             })
         });
 
